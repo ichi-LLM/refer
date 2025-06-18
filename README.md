@@ -21,13 +21,13 @@ pip install -r requirements.txt
 
 ```json
 {
-  "base_url": "https://stargate.jamacloud.com",
-  "project_id": 124,
+  "base_url": "URL",
+  "project_id": xxx,
   "api_id": "あなたのAPI ID",
   "api_secret": "あなたのAPI Secret",
   "proxies": {
-    "http": "http://proxy1000.co.jp:15520",
-    "https": "http://proxy1000.co.jp:15520"
+    "http": "TEST",
+    "https": "TEST"
   }
 }
 ```
@@ -66,7 +66,7 @@ python main.py fetch -o requirements.xlsx -s 6.1.5
 
 #### 特定のコンポーネント以下を取得（名前で指定）
 ```bash
-python main.py fetch -o requirements.xlsx -n "公共駐車場"
+python main.py fetch -o requirements.xlsx -n "TEST"
 ```
 
 #### 最大3階層まで取得
