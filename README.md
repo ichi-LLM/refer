@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ```json
 {
   "base_url": "URL",
-  "project_id": xxx,
+  "project_id": 11111,
   "api_id": "あなたのAPI ID",
   "api_secret": "あなたのAPI Secret",
   "proxies": {
