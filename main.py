@@ -212,16 +212,21 @@ class JAMATool:
             print(f"\n❌ エラーが発生しました: {str(e)}")
             sys.exit(1)
             
-    def update_requirements(self, input_file: str, dry_run: bool = False) -> None:
+    def update_requirements(self, input_file: str, dry_run: bool = False, debug: bool = False) -> None:
         """
         Excelファイルから要件を読み込んでJAMAを更新
         
         Args:
             input_file: 入力Excelファイル名
             dry_run: True の場合、実際の更新は行わない
+            debug: True の場合、デバッグモードを有効にする
         """
         try:
             logger.info(f"Excelファイルから要件を読み込み: {input_file}")
+            
+            if debug:
+                logger.info("デバッグモードが有効です")
+                self.jama.set_debug_mode(True)
             
             # Excelから要件データを読み込み（進捗表示あり）
             requirements = self.excel.read_requirement_excel(input_file)
@@ -430,11 +435,13 @@ def main():
     # updateコマンド
     update_parser = subparsers.add_parser('update', help='Excelファイルから要件を更新')
     update_parser.add_argument('-i', '--input', required=True,
-                              help='入力Excelファイル名')
+                            help='入力Excelファイル名')
     update_parser.add_argument('--dry-run', action='store_true',
-                              help='実際の更新は行わない（プレビューのみ）')
+                            help='実際の更新は行わない（プレビューのみ）')
+    update_parser.add_argument('--debug', action='store_true',
+                            help='デバッグモードを有効にする')
     update_parser.add_argument('-c', '--config', default='config.json',
-                              help='設定ファイルのパス（デフォルト: config.json）')
+                            help='設定ファイルのパス（デフォルト: config.json）')
     
     # templateコマンド
     template_parser = subparsers.add_parser('template', help='空のExcelテンプレートを作成')
@@ -468,7 +475,8 @@ def main():
         elif args.command == 'update':
             tool.update_requirements(
                 input_file=args.input,
-                dry_run=args.dry_run
+                dry_run=args.dry_run,
+                debug=args.debug if hasattr(args, 'debug') else False
             )
 
 

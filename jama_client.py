@@ -296,20 +296,59 @@ class JAMAClient:
         endpoint = f"/rest/v1/items/{item_id}"
         current_item = self._make_request("GET", endpoint)
         
-        # 現在の親IDを取得
-        parent_id = current_item.get("data", {}).get("location", {}).get("parent", {}).get("item")
+        # デバッグモード時のみ詳細ログを出力
+        if self.debug_mode:
+            logger.debug(f"Current item response keys: {current_item.keys()}")
         
-        # リクエストボディ作成（親情報を維持）
-        request_data = {
-            "project": self.project_id,
-            "location": {
-                "parent": {
-                    "item": parent_id,
-                    "project": self.project_id
-                }
-            },
-            "fields": self._prepare_fields(item_data)
-        }
+        # データ構造に応じて親IDを取得
+        if "data" in current_item:
+            location = current_item["data"].get("location", {})
+            if self.debug_mode:
+                logger.debug(f"Using data.location path")
+        else:
+            location = current_item.get("location", {})
+            if self.debug_mode:
+                logger.debug(f"Using direct location path")
+        
+        parent_id = location.get("parent", {}).get("item")
+        
+        # デバッグモード時は詳細情報、通常時は簡潔な情報
+        if self.debug_mode:
+            logger.debug(f"Updating item {item_id}, parent_id: {parent_id}, location: {location}")
+        else:
+            logger.info(f"アイテム更新中: ID={item_id}")
+        
+        # リクエストボディ作成（親情報に応じて分岐）
+        if parent_id:
+            # 親がアイテムの場合
+            if self.debug_mode:
+                logger.debug(f"Parent is an item: {parent_id}")
+            request_data = {
+                "project": self.project_id,
+                "location": {
+                    "parent": {
+                        "item": parent_id
+                    }
+                },
+                "fields": self._prepare_fields(item_data)
+            }
+        else:
+            # 親がプロジェクト（ルート）の場合
+            if self.debug_mode:
+                logger.debug(f"Parent is project root")
+            request_data = {
+                "project": self.project_id,
+                "location": {
+                    "parent": {
+                        "project": self.project_id
+                    }
+                },
+                "fields": self._prepare_fields(item_data)
+            }
+        
+        # デバッグモード時のみリクエストデータを表示
+        if self.debug_mode:
+            logger.debug(f"Request data: {request_data}")
         
         # 更新を実行
         self._make_request("PUT", endpoint, json_data=request_data)
