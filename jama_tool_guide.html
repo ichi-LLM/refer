@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAMA要件管理ツール - ビジュアルガイド</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* ヘッダー */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: rotate(45deg);
+        }
+        
+        .hero h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero p {
+            font-size: 1.3em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* カード */
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .icon {
+            font-size: 1.5em;
+        }
+        
+        /* グリッドレイアウト */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        /* ステップ */
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        /* コマンド例 */
+        .command {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 10px 0;
+            position: relative;
+            overflow-x: auto;
+        }
+        
+        .command::before {
+            content: '$';
+            color: #68d391;
+            margin-right: 10px;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        
+        .copy-btn:hover {
+            background: #5a6578;
+        }
+        
+        /* テーブル */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            overflow-x: auto;
+            display: block;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            position: sticky;
+            top: 0;
+        }
+        
+        /* バッジ */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin: 2px;
+        }
+        
+        .badge-new {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .badge-update {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .badge-delete {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        /* アニメーション */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* フロー図 */
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .flow-item {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .flow-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .flow-arrow {
+            font-size: 2em;
+            color: #667eea;
+        }
+        
+        /* アラート */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: start;
+            gap: 10px;
+        }
+        
+        .alert-info {
+            background: #ebf8ff;
+            color: #2c5282;
+            border-left: 4px solid #3182ce;
+        }
+        
+        .alert-warning {
+            background: #fffaf0;
+            color: #7b341e;
+            border-left: 4px solid #dd6b20;
+        }
+        
+        .alert-danger {
+            background: #fee;
+            color: #c53030;
+            border-left: 4px solid #e53e3e;
+        }
+        
+        /* 機能カード */
+        .feature-card {
+            background: linear-gradient(135deg, #f6f9fc 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            
+            .flow {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            table {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ヒーローセクション -->
+        <div class="hero">
+            <h1 class="float-animation">🚀 JAMA要件管理ツール</h1>
+            <p>JAMAとExcelを連携させて、要件管理を効率化</p>
+        </div>
+        
+        <!-- 概要 -->
+        <div class="card">
+            <h2><span class="icon">🎯</span>このツールでできること</h2>
+            <div class="grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📥</div>
+                    <h3>要件の一括取得</h3>
+                    <p>JAMAから要件を階層構造で取得し、Excelファイルに出力</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✏️</div>
+                    <h3>Excelで簡単編集</h3>
+                    <p>使い慣れたExcelで要件を編集、新規追加・更新・削除が直感的</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📤</div>
+                    <h3>安全な一括更新</h3>
+                    <p>ドライラン機能で事前確認後、JAMAに一括反映</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 基本的な流れ -->
+        <div class="card">
+            <h2><span class="icon">🔄</span>基本的な使い方の流れ</h2>
+            <div class="flow">
+                <div class="flow-item">
+                    <div class="flow-icon">🏢</div>
+                    <div><strong>JAMA</strong><br>要件データ</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">📊</div>
+                    <div><strong>Excel</strong><br>一覧表示</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">✏️</div>
+                    <div><strong>編集</strong><br>追加・更新・削除</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🏢</div>
+                    <div><strong>JAMA</strong><br>反映完了</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- クイックスタート -->
+        <div class="card">
+            <h2><span class="icon">⚡</span>クイックスタート</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <h4>練習用テンプレートで試してみる</h4>
+                        <p>JAMAの設定なしで、すぐに形式を確認できます</p>
+                        <div class="command">python main.py template -o practice.xlsx</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <h4>設定ファイル（config.json）を作成</h4>
+                        <p>JAMAのAPI認証情報とプロキシ設定を記入</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <h4>要件を取得してExcelに出力</h4>
+                        <div class="command">python main.py fetch -o requirements.xlsx</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div>
+                        <h4>Excelで編集後、JAMAに反映</h4>
+                        <div class="command">python main.py update -i requirements.xlsx --dry-run</div>
+                        <p>↑ まずドライランで確認してから実行</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Excelの編集方法 -->
+        <div class="card">
+            <h2><span class="icon">📊</span>Excelファイルの編集方法</h2>
+            
+            <h3>操作の種類</h3>
+            <div style="margin: 20px 0;">
+                <span class="badge badge-new">新規作成</span>
+                <p style="margin-top: 5px;">JAMA_ID（A列）を空欄にして、必要な情報を記入</p>
+            </div>
+            <div style="margin: 20px 0;">
+                <span class="badge badge-update">更新</span>
+                <p style="margin-top: 5px;">要件更新（W列）を「する」に設定して、更新したい項目を編集</p>
+            </div>
+            <div style="margin: 20px 0;">
+                <span class="badge badge-delete">削除</span>
+                <p style="margin-top: 5px;">メモ/コメント（B列）に「削除」と完全一致で入力</p>
+            </div>
+            
+            <div class="alert alert-danger">
+                <span>⚠️</span>
+                <div>
+                    <strong>削除操作の重要な注意</strong><br>
+                    B列に「削除」と完全一致で入力すると、その要件は削除されます。<br>
+                    「削除予定」「削除したい」などは削除されません。誤入力に十分注意してください。
+                </div>
+            </div>
+            
+            <h3>更新ロジック早見表</h3>
+            <table>
+                <tr>
+                    <th>A列<br>(JAMA_ID)</th>
+                    <th>B列<br>(メモ)</th>
+                    <th>W列<br>(要件更新)</th>
+                    <th>動作</th>
+                    <th>説明</th>
+                </tr>
+                <tr>
+                    <td>空欄</td>
+                    <td>（任意）</td>
+                    <td>（任意）</td>
+                    <td><span class="badge badge-new">新規作成</span></td>
+                    <td>新しい要件として追加</td>
+                </tr>
+                <tr>
+                    <td>あり</td>
+                    <td style="color: #c53030; font-weight: bold;">削除</td>
+                    <td>（任意）</td>
+                    <td><span class="badge badge-delete">削除</span></td>
+                    <td>要件を削除（取り消し不可）</td>
+                </tr>
+                <tr>
+                    <td>あり</td>
+                    <td>それ以外</td>
+                    <td style="color: #2c5282; font-weight: bold;">する</td>
+                    <td><span class="badge badge-update">更新</span></td>
+                    <td>変更した項目のみ更新</td>
+                </tr>
+                <tr>
+                    <td>あり</td>
+                    <td>それ以外</td>
+                    <td>空欄/しない</td>
+                    <td>スキップ</td>
+                    <td>何もしない</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- コマンド一覧 -->
+        <div class="card">
+            <h2><span class="icon">💻</span>主なコマンド</h2>
+            
+            <h3>📄 テンプレート作成</h3>
+            <div class="alert alert-info">
+                <span>💡</span>
+                <span>JAMAに接続せずに、サンプルデータ入りのテンプレートを作成できます</span>
+            </div>
+            <div class="command">python main.py template -o template.xlsx</div>
+            
+            <h3>📥 要件の取得</h3>
+            <table>
+                <tr>
+                    <th>目的</th>
+                    <th>コマンド</th>
+                </tr>
+                <tr>
+                    <td>プロジェクト全体</td>
+                    <td><code>python main.py fetch -o all.xlsx</code></td>
+                </tr>
+                <tr>
+                    <td>特定の場所から（番号）</td>
+                    <td><code>python main.py fetch -o part.xlsx -s 6.1.5</code></td>
+                </tr>
+                <tr>
+                    <td>特定の場所から（名前）</td>
+                    <td><code>python main.py fetch -o part.xlsx -n "公共駐車場"</code></td>
+                </tr>
+                <tr>
+                    <td>階層を制限</td>
+                    <td><code>python main.py fetch -o shallow.xlsx -d 3</code></td>
+                </tr>
+                <tr>
+                    <td>件数を制限</td>
+                    <td><code>python main.py fetch -o limited.xlsx --count 5000</code></td>
+                </tr>
+            </table>
+            
+            <h3>📤 要件の更新</h3>
+            <div class="command">python main.py update -i requirements.xlsx --dry-run</div>
+            <p>↑ まずドライランで確認（実際の更新はしません）</p>
+            
+            <div class="command">python main.py update -i requirements.xlsx</div>
+            <p>↑ 問題なければ実行</p>
+        </div>
+        
+        <!-- Description編集 -->
+        <div class="card">
+            <h2><span class="icon">📝</span>Description編集（SYSP項目）</h2>
+            
+            <div class="alert alert-info">
+                <span>📋</span>
+                <span>SYSPアイテムは、専用の5行形式テーブルでDescriptionを編集できます</span>
+            </div>
+            
+            <h3>編集手順</h3>
+            <ol style="line-height: 2;">
+                <li>Requirement_of_Driverシートで、W列（要件更新）を「する」に設定</li>
+                <li>X列（新Description参照）の「編集画面へ」リンクをクリック</li>
+                <li>Description_editシートに移動し、5行テーブルを編集</li>
+                <li>「一覧に戻る」リンクで元のシートに戻る</li>
+            </ol>
+            
+            <h3>5行テーブルの構造</h3>
+            <table>
+                <tr>
+                    <th>行</th>
+                    <th>内容</th>
+                    <th>説明</th>
+                </tr>
+                <tr>
+                    <td>1行目</td>
+                    <td>I/O Type</td>
+                    <td>IN（入力）/ OUT（出力）</td>
+                </tr>
+                <tr>
+                    <td>2行目</td>
+                    <td>項目名</td>
+                    <td>(a)～(d)の4項目に分類</td>
+                </tr>
+                <tr>
+                    <td>3行目</td>
+                    <td>Data Name</td>
+                    <td>データ名を記入</td>
+                </tr>
+                <tr>
+                    <td>4行目</td>
+                    <td>Data Label</td>
+                    <td>データラベルを記入</td>
+                </tr>
+                <tr>
+                    <td>5行目</td>
+                    <td>Data</td>
+                    <td>実データを記入</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- よくある質問 -->
+        <div class="card">
+            <h2><span class="icon">❓</span>よくある質問</h2>
+            
+            <h3>Q: ドライランって何ですか？</h3>
+            <p>A: 実際にJAMAを更新せずに、どんな変更が行われるかを事前に確認する機能です。安全に更新するための重要な機能です。</p>
+            
+            <h3>Q: 空欄のフィールドはどうなりますか？</h3>
+            <p>A: 空欄のフィールドは更新されません。JAMAの既存の値がそのまま保持されます。</p>
+            
+            <h3>Q: 大量のデータを処理できますか？</h3>
+            <p>A: はい、可能です。推奨上限は16,000件です。それ以上の場合は、コンポーネント単位で分割して処理することをお勧めします。</p>
+            
+            <h3>Q: エラーが出たらどうすれば？</h3>
+            <p>A: <code>jama_tool.log</code>ファイルに詳細なエラー情報が記録されています。エラーメッセージと共に確認してください。</p>
+            
+            <h3>Q: プロキシ設定は必須ですか？</h3>
+            <p>A: はい、必須です。社内ネットワークからJAMAにアクセスする場合、プロキシ設定が必要です。</p>
+        </div>
+        
+        <!-- 注意事項 -->
+        <div class="card">
+            <h2><span class="icon">⚠️</span>重要な注意事項</h2>
+            
+            <div class="alert alert-danger">
+                <span>🔴</span>
+                <div>
+                    <strong>削除操作は取り消せません</strong><br>
+                    B列に「削除」と入力した要件は、JAMAから完全に削除されます。
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <span>🔑</span>
+                <div>
+                    <strong>API Secretは一度だけ</strong><br>
+                    JAMA API Secretは作成時に一度しか表示されません。必ずメモしてください。
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <span>💾</span>
+                <div>
+                    <strong>更新前のバックアップ</strong><br>
+                    大量の要件を更新する前には、必ずJAMAのバックアップを取ってください。
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <span>🔄</span>
+                <div>
+                    <strong>ドライラン推奨</strong><br>
+                    必ず --dry-run オプションで更新内容を確認してから実行してください。
+                </div>
+            </div>
+        </div>
+        
+        <!-- トラブルシューティング -->
+        <div class="card">
+            <h2><span class="icon">🔧</span>トラブルシューティング</h2>
+            
+            <table>
+                <tr>
+                    <th>エラー</th>
+                    <th>原因</th>
+                    <th>対処法</th>
+                </tr>
+                <tr>
+                    <td>OAuth認証に失敗</td>
+                    <td>API認証情報の誤り</td>
+                    <td>config.jsonのapi_id/api_secretを確認</td>
+                </tr>
+                <tr>
+                    <td>設定ファイルが見つからない</td>
+                    <td>config.jsonが存在しない</td>
+                    <td>config.jsonを作成（サンプルが自動生成される）</td>
+                </tr>
+                <tr>
+                    <td>プロキシエラー</td>
+                    <td>ネットワーク接続の問題</td>
+                    <td>プロキシ設定を確認</td>
+                </tr>
+                <tr>
+                    <td>Excelファイルが開けない</td>
+                    <td>ファイルが使用中</td>
+                    <td>他のプログラムで開いていないか確認</td>
+                </tr>
+            </table>
+            
+            <h3>ログファイルの確認方法</h3>
+            <div class="command">tail -n 50 jama_tool.log</div>
+            <p>最新の50行を表示してエラー内容を確認</p>
+        </div>
+    </div>
+    
+    <script>
+        // コピーボタンの機能
+        document.querySelectorAll('.command').forEach(cmd => {
+            // すでにボタンがある場合はスキップ
+            if (cmd.querySelector('.copy-btn')) return;
+            
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'コピー';
+            btn.onclick = () => {
+                const text = cmd.textContent.replace('$ ', '').replace('コピー', '').trim();
+                navigator.clipboard.writeText(text);
+                btn.textContent = 'コピー済み！';
+                setTimeout(() => btn.textContent = 'コピー', 2000);
+            };
+            cmd.appendChild(btn);
+        });
+    </script>
+</body>
+</html>
