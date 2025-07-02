@@ -90,17 +90,13 @@ class ExcelHandler:
         'X': '新Description参照'
     }
     
-    # Description編集シートの列幅（拡張性を持たせる）
-    # 将来的に列数を変更する場合は、この値を変更するだけでOK
+    # Description編集シートの列幅（(a)～(d)の列数）
     DESC_COLS = {
         'a': 1,      # (a)Trigger action: 1列
-        'b': 67,     # (b)Behavior of ego-vehicle: 67列（64から拡張）
+        'b': 64,     # (b)Behavior of ego-vehicle: 64列
         'c': 10,     # (c)HMI: 10列
         'd': 5       # (d)Other: 5列
     }
-    
-    # デフォルトフォント設定
-    DEFAULT_FONT_NAME = 'Yu Gothic UI'
     
     def __init__(self, config=None):
         """初期化"""
@@ -112,41 +108,10 @@ class ExcelHandler:
         
         # パフォーマンス設定
         if config:
+            # max_description_templates は使用しない（すべてのSYSPにテンプレート作成）
             self.column_width_check_rows = config.column_width_check_rows
         else:
             self.column_width_check_rows = 100
-            
-    @property
-    def desc_total_cols(self):
-        """Description編集シートの総列数を動的に計算"""
-        # 1(行ヘッダー) + 各項目の列数の合計
-        return 1 + sum(self.DESC_COLS.values())
-        
-    def _get_column_positions(self):
-        """各項目の列位置を動的に計算"""
-        positions = {}
-        col_idx = 2  # B列から開始（A列は行ヘッダー）
-        
-        # (a) Trigger action
-        positions['a_start'] = col_idx
-        positions['a_end'] = col_idx + self.DESC_COLS['a'] - 1
-        col_idx = positions['a_end'] + 1
-        
-        # (b) Behavior of ego-vehicle
-        positions['b_start'] = col_idx
-        positions['b_end'] = col_idx + self.DESC_COLS['b'] - 1
-        col_idx = positions['b_end'] + 1
-        
-        # (c) HMI
-        positions['c_start'] = col_idx
-        positions['c_end'] = col_idx + self.DESC_COLS['c'] - 1
-        col_idx = positions['c_end'] + 1
-        
-        # (d) Other
-        positions['d_start'] = col_idx
-        positions['d_end'] = col_idx + self.DESC_COLS['d'] - 1
-        
-        return positions
         
     def create_requirement_excel(self, items: List[Dict], output_file: str, show_progress: bool = True) -> None:
         """
@@ -163,9 +128,6 @@ class ExcelHandler:
         # 新規ワークブック作成
         logger.info("新規ワークブック作成中...")
         self.wb = Workbook()
-        
-        # デフォルトフォントを設定
-        self.wb._default_font = Font(name=self.DEFAULT_FONT_NAME)
         
         # 最初にDescription_editシートを作成（マッピング情報を確立）
         if show_progress:
@@ -195,7 +157,7 @@ class ExcelHandler:
         # ヘッダー行作成
         logger.info("ヘッダー行作成中...")
         header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-        header_font = Font(name=self.DEFAULT_FONT_NAME, color="FFFFFF", bold=True)
+        header_font = Font(color="FFFFFF", bold=True)
         
         for col, header in self.COLUMNS.items():
             cell = ws[f"{col}1"]
@@ -225,42 +187,24 @@ class ExcelHandler:
             # 階層情報を解析（高速化版）
             hierarchy = self._parse_hierarchy_fast(item)
             
-            # 基本情報（フォント設定付き）
-            cell = ws[f"A{row_num}"]
-            cell.value = item.get("jama_id", "")
-            cell.font = Font(name=self.DEFAULT_FONT_NAME)
-            
-            cell = ws[f"B{row_num}"]
-            cell.value = ""  # メモ/コメント欄（空欄）
-            cell.font = Font(name=self.DEFAULT_FONT_NAME)
-            
-            cell = ws[f"C{row_num}"]
-            cell.value = item.get("sequence", "")
-            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            # 基本情報
+            ws[f"A{row_num}"] = item.get("jama_id", "")
+            ws[f"B{row_num}"] = ""  # メモ/コメント欄（空欄）
+            ws[f"C{row_num}"] = item.get("sequence", "")
             
             # 階層1～11
             for i, level in enumerate(hierarchy, 1):
                 if i <= 11:
-                    cell = ws[f"{get_column_letter(3 + i)}{row_num}"]
-                    cell.value = level
-                    cell.font = Font(name=self.DEFAULT_FONT_NAME)
+                    ws[f"{get_column_letter(3 + i)}{row_num}"] = level
                     
             # その他の情報
-            for col, field, default in [
-                ("O", "item_type", "Requirement"),
-                ("P", "assignee", ""),
-                ("Q", "status", ""),
-                ("R", "tags", ""),
-                ("S", "reason", ""),
-                ("T", "preconditions", ""),
-                ("U", "target_system", "")
-            ]:
-                cell = ws[f"{col}{row_num}"]
-                if field == "item_type":
-                    cell.value = default
-                else:
-                    cell.value = item.get(field, default)
-                cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            ws[f"O{row_num}"] = "Requirement"  # デフォルト値
+            ws[f"P{row_num}"] = item.get("assignee", "")
+            ws[f"Q{row_num}"] = item.get("status", "")
+            ws[f"R{row_num}"] = item.get("tags", "")
+            ws[f"S{row_num}"] = item.get("reason", "")
+            ws[f"T{row_num}"] = item.get("preconditions", "")
+            ws[f"U{row_num}"] = item.get("target_system", "")
             
             # SYSPアイテムのカスタムフィールドをログに出力（デバッグ用）
             if "SYSP" in item.get("name", ""):
@@ -275,32 +219,22 @@ class ExcelHandler:
             description = item.get("description", "")
             if description:
                 # HTMLテーブルを簡易表示
-                cell = ws[f"V{row_num}"]
-                cell.value = self._extract_table_preview(description)
-                cell.font = Font(name=self.DEFAULT_FONT_NAME)
+                ws[f"V{row_num}"] = self._extract_table_preview(description)
                 
                 # SYSPのDescriptionがある場合は編集リンクを作成
                 if "SYSP" in item.get("name", ""):
-                    cell = ws[f"W{row_num}"]
-                    cell.value = ""  # デフォルトは空欄（更新しない）
-                    cell.font = Font(name=self.DEFAULT_FONT_NAME)
-                    
+                    ws[f"W{row_num}"] = ""  # デフォルトは空欄（更新しない）
                     # sysp_template_mapから正しいテンプレート位置を取得
                     if hasattr(self, 'sysp_template_map') and (idx - 1) in self.sysp_template_map:
                         template_row = self.sysp_template_map[idx - 1]
-                        cell = ws[f"X{row_num}"]
-                        cell.value = "編集画面へ"
+                        ws[f"X{row_num}"] = f"編集画面へ"
                         # 要件名が見えるように、1行上にリンク
-                        cell.hyperlink = f"#Description_edit!A{template_row - 1}"
-                        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+                        ws[f"X{row_num}"].hyperlink = f"#Description_edit!A{template_row - 1}"
+                        ws[f"X{row_num}"].font = Font(color="0000FF", underline="single")
                 else:
-                    cell = ws[f"W{row_num}"]
-                    cell.value = ""  # 非SYSPも空欄
-                    cell.font = Font(name=self.DEFAULT_FONT_NAME)
+                    ws[f"W{row_num}"] = ""  # 非SYSPも空欄
             else:
-                cell = ws[f"W{row_num}"]
-                cell.value = ""  # Descriptionがない場合も空欄
-                cell.font = Font(name=self.DEFAULT_FONT_NAME)
+                ws[f"W{row_num}"] = ""  # Descriptionがない場合も空欄
                     
             row_num += 1
             
@@ -336,9 +270,7 @@ class ExcelHandler:
         
         if not sysp_items:
             logger.info("SYSPアイテムが見つかりませんでした")
-            cell = ws["A1"]
-            cell.value = "SYSPアイテムが見つかりませんでした"
-            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            ws["A1"] = "SYSPアイテムが見つかりませんでした"
             return
             
         # すべてのSYSPアイテムにテンプレートを作成（制限なし）
@@ -361,25 +293,19 @@ class ExcelHandler:
             # ヘッダー行（【JAMA_ID】要件名の形式で表示）
             jama_id = item.get('jama_id', '新規')
             name = item.get("name", "")
-            cell = ws[f"A{current_row - 2}"]
-            cell.value = f"【{jama_id}】{name}"
-            cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True)
-            # 列の結合を動的に計算
-            merge_end_col = get_column_letter(min(10, self.desc_total_cols))
-            ws.merge_cells(f"A{current_row - 2}:{merge_end_col}{current_row - 2}")
+            ws[f"A{current_row - 2}"] = f"【{jama_id}】{name}"
+            ws[f"A{current_row - 2}"].font = Font(bold=True)
+            ws.merge_cells(f"A{current_row - 2}:J{current_row - 2}")
             
             # 要件名を表示（リンク先の1つ上）
-            cell = ws[f"A{current_row - 1}"]
-            cell.value = name
-            cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=12)
-            ws.merge_cells(f"A{current_row - 1}:{merge_end_col}{current_row - 1}")
+            ws[f"A{current_row - 1}"] = name
+            ws[f"A{current_row - 1}"].font = Font(bold=True, size=12)
+            ws.merge_cells(f"A{current_row - 1}:J{current_row - 1}")
             
             # 一覧に戻るリンク
-            link_col = get_column_letter(min(11, self.desc_total_cols))
-            cell = ws[f"{link_col}{current_row - 1}"]
-            cell.value = "一覧に戻る"
-            cell.hyperlink = f"#Requirement_of_Driver!A{original_idx + 2}"
-            cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+            ws[f"K{current_row - 1}"] = "一覧に戻る"
+            ws[f"K{current_row - 1}"].hyperlink = f"#Requirement_of_Driver!A{original_idx + 2}"
+            ws[f"K{current_row - 1}"].font = Font(color="0000FF", underline="single")
             
             # 既存のDescriptionをパース
             existing_data = None
@@ -391,21 +317,23 @@ class ExcelHandler:
             # 5行テーブルのテンプレート作成（既存データがあれば渡す）
             self._create_description_template(ws, current_row, existing_data)
             
+            # 「【参考】現在のDescription」セクションは削除
+            
             current_row += 16  # 次のテンプレートまでの間隔
             
         logger.info(f"Descriptionテンプレート作成完了: {total_sysp}件")
                     
     def _create_description_template(self, ws, start_row: int, existing_data: Optional[List[List[str]]] = None) -> None:
         """
-        5行形式のDescriptionテンプレートを作成（拡張性対応版）
+        5行形式のDescriptionテンプレートを作成
         
         Args:
             ws: ワークシート
             start_row: 開始行
             existing_data: 既存のテーブルデータ（5行のリスト）
         """
-        # 列の位置を動的に計算
-        pos = self._get_column_positions()
+        # 列の定義
+        col_idx = 1
         
         # スタイル
         border = Border(
@@ -417,62 +345,43 @@ class ExcelHandler:
         header_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
         
         # 1行目: I/O Type
-        cell = ws.cell(row=start_row, column=1, value="I/O Type")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        
-        cell = ws.cell(row=start_row, column=2, value="IN")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        
-        cell = ws.cell(row=start_row, column=3, value="OUT")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        
-        # OUTを最後まで結合（動的に計算）
-        end_col = get_column_letter(self.desc_total_cols)
-        ws.merge_cells(f"C{start_row}:{end_col}{start_row}")
+        ws.cell(row=start_row, column=1, value="I/O Type").border = border
+        ws.cell(row=start_row, column=2, value="IN").border = border
+        ws.cell(row=start_row, column=3, value="OUT").border = border
+        # OUTを最後まで結合
+        ws.merge_cells(f"C{start_row}:CF{start_row}")
         
         # 2行目: 項目名
-        cell = ws.cell(row=start_row + 1, column=1, value="")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        ws.cell(row=start_row + 1, column=1, value="").border = border
+        ws.cell(row=start_row + 1, column=2, value="(a)Trigger action").border = border
         
-        # (a) Trigger action
-        cell = ws.cell(row=start_row + 1, column=pos['a_start'], value="(a)Trigger action")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        
-        # (b) Behavior of ego-vehicle（動的に結合）
-        cell = ws.cell(row=start_row + 1, column=pos['b_start'], value="(b)Behavior of ego-vehicle")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        if pos['b_end'] > pos['b_start']:
-            ws.merge_cells(f"{get_column_letter(pos['b_start'])}{start_row + 1}:{get_column_letter(pos['b_end'])}{start_row + 1}")
+        # (b)Behavior of ego-vehicle (64列)
+        b_start = 3
+        b_end = b_start + self.DESC_COLS['b'] - 1
+        ws.cell(row=start_row + 1, column=b_start, value="(b)Behavior of ego-vehicle").border = border
+        if b_end > b_start:
+            ws.merge_cells(f"{get_column_letter(b_start)}{start_row + 1}:{get_column_letter(b_end)}{start_row + 1}")
             
-        # (c) HMI（動的に結合）
-        cell = ws.cell(row=start_row + 1, column=pos['c_start'], value="(c)HMI")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        if pos['c_end'] > pos['c_start']:
-            ws.merge_cells(f"{get_column_letter(pos['c_start'])}{start_row + 1}:{get_column_letter(pos['c_end'])}{start_row + 1}")
+        # (c)HMI (10列)
+        c_start = b_end + 1
+        c_end = c_start + self.DESC_COLS['c'] - 1
+        ws.cell(row=start_row + 1, column=c_start, value="(c)HMI").border = border
+        if c_end > c_start:
+            ws.merge_cells(f"{get_column_letter(c_start)}{start_row + 1}:{get_column_letter(c_end)}{start_row + 1}")
             
-        # (d) Other（動的に結合）
-        cell = ws.cell(row=start_row + 1, column=pos['d_start'], value="(d)Other")
-        cell.border = border
-        cell.font = Font(name=self.DEFAULT_FONT_NAME)
-        if pos['d_end'] > pos['d_start']:
-            ws.merge_cells(f"{get_column_letter(pos['d_start'])}{start_row + 1}:{get_column_letter(pos['d_end'])}{start_row + 1}")
+        # (d)Other (5列)
+        d_start = c_end + 1
+        d_end = d_start + self.DESC_COLS['d'] - 1
+        ws.cell(row=start_row + 1, column=d_start, value="(d)Other").border = border
+        if d_end > d_start:
+            ws.merge_cells(f"{get_column_letter(d_start)}{start_row + 1}:{get_column_letter(d_end)}{start_row + 1}")
             
         # 3-5行目: Data Name, Data Label, Data
         data_rows = ["Data Name", "Data Label", "Data"]
         for i, row_name in enumerate(data_rows, 2):
-            cell = ws.cell(row=start_row + i, column=1, value=row_name)
-            cell.border = border
-            cell.font = Font(name=self.DEFAULT_FONT_NAME)
-            
-            # 入力セルを配置（動的に範囲を計算）
-            for col in range(2, self.desc_total_cols + 1):
+            ws.cell(row=start_row + i, column=1, value=row_name).border = border
+            # 入力セルを配置
+            for col in range(2, d_end + 1):
                 cell = ws.cell(row=start_row + i, column=col)
                 
                 # 既存データがある場合は値を設定
@@ -484,7 +393,6 @@ class ExcelHandler:
                     
                 cell.border = border
                 cell.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
-                cell.font = Font(name=self.DEFAULT_FONT_NAME)
                 
     def _parse_hierarchy_fast(self, item: Dict) -> List[str]:
         """
@@ -579,7 +487,7 @@ class ExcelHandler:
             html_description: HTML形式のDescription
             
         Returns:
-            5行×N列のテーブルデータ、または None（形式が異なる場合）
+            5行×81列のテーブルデータ、または None（形式が異なる場合）
         """
         if not html_description or '<table' not in html_description:
             return None
@@ -763,7 +671,7 @@ class ExcelHandler:
             
     def _read_description_from_sheet(self, ws, jama_id: str) -> Optional[str]:
         """
-        Description編集シートから新しいDescriptionを読み込み（拡張性対応版）
+        Description編集シートから新しいDescriptionを読み込み
         
         Args:
             ws: Description_editワークシート
@@ -781,12 +689,11 @@ class ExcelHandler:
                 # テーブル開始行を特定（【JAMA_ID】要件名の2行下）
                 table_start = row + 2
                 
-                # 5行分のデータを読み込み（列数は動的に計算）
+                # 5行分のデータを読み込み
                 table_data = []
                 for i in range(5):
                     row_data = []
-                    # 総列数まで読み込み
-                    for col in range(1, self.desc_total_cols + 1):
+                    for col in range(1, 87):  # A～CF列（1+1+64+10+5 = 81列 + 余裕）
                         value = ws.cell(row=table_start + i, column=col).value
                         # 0も正しく表示されるように修正
                         row_data.append(str(value) if value is not None else "")
@@ -799,7 +706,7 @@ class ExcelHandler:
         
     def _convert_to_html_table(self, table_data: List[List[str]]) -> str:
         """
-        テーブルデータをHTMLに変換（拡張性対応版）
+        テーブルデータをHTMLに変換
         
         Args:
             table_data: テーブルデータ
@@ -807,9 +714,6 @@ class ExcelHandler:
         Returns:
             HTMLテーブル
         """
-        # 列の位置を動的に計算
-        pos = self._get_column_positions()
-        
         html = "<table border='1' cellpadding='5' cellspacing='0'>\n"
         
         for row_idx, row in enumerate(table_data):
@@ -820,24 +724,20 @@ class ExcelHandler:
                 html += f"<td>{row[0]}</td>\n"
                 # IN列に薄い青の背景色
                 html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
-                # OUT列に薄い緑の背景色（動的にcolspan計算）
-                out_colspan = self.desc_total_cols - 2  # 総列数 - 最初の2列
-                html += f"<td colspan='{out_colspan}' style='background-color: #E8F5E9;'>{row[2]}</td>\n"
+                # OUT列に薄い緑の背景色
+                html += f"<td colspan='84' style='background-color: #E8F5E9;'>{row[2]}</td>\n"
             elif row_idx == 1:  # 項目名行
                 html += f"<td>{row[0]}</td>\n"
                 # (a)Trigger actionに薄い青の背景色
                 html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
-                # (b)Behavior of ego-vehicleに薄い緑の背景色（動的にcolspan計算）
-                b_colspan = self.DESC_COLS['b']
-                html += f"<td colspan='{b_colspan}' style='background-color: #E8F5E9;'>{row[pos['b_start'] - 1]}</td>\n"
-                # (c)HMIに薄い緑の背景色（動的にcolspan計算）
-                c_colspan = self.DESC_COLS['c']
-                html += f"<td colspan='{c_colspan}' style='background-color: #E8F5E9;'>{row[pos['c_start'] - 1]}</td>\n"
-                # (d)Otherに薄い緑の背景色（動的にcolspan計算）
-                d_colspan = self.DESC_COLS['d']
-                html += f"<td colspan='{d_colspan}' style='background-color: #E8F5E9;'>{row[pos['d_start'] - 1]}</td>\n"
+                # (b)Behavior of ego-vehicleに薄い緑の背景色
+                html += f"<td colspan='64' style='background-color: #E8F5E9;'>{row[2]}</td>\n"
+                # (c)HMIに薄い緑の背景色
+                html += f"<td colspan='10' style='background-color: #E8F5E9;'>{row[66]}</td>\n"
+                # (d)Otherに薄い緑の背景色
+                html += f"<td colspan='5' style='background-color: #E8F5E9;'>{row[76]}</td>\n"
             else:  # データ行（色なし）
-                for cell in row[:self.desc_total_cols]:  # 必要な列数のみ
+                for cell in row[:81]:  # 必要な列数のみ
                     html += f"<td>{cell}</td>\n"
                     
             html += "</tr>\n"
