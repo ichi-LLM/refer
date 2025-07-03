@@ -767,7 +767,7 @@ class ExcelHandler:
                     # すべての情報を読み込み
                     item = {
                         "jama_id": jama_id,
-                        "sequence": requirement_sheet[f"C{row_num}"].value,
+                        "sequence": requirement_sheet[f"C{row_num}"].value or "",  # Noneを空文字列に変換
                         "row_num": row_num,
                         "name": requirement_sheet[f"N{row_num}"].value or requirement_sheet[f"M{row_num}"].value
                     }
@@ -1112,8 +1112,8 @@ class ExcelHandler:
         # 同じ親を持つ既存のsequenceを収集
         sibling_sequences = []
         for item in items_to_check:
-            seq = item.get("sequence", "")
-            if seq.startswith(prefix):
+            seq = item.get("sequence") or ""  # Noneや空の場合は空文字列に
+            if seq and seq.startswith(prefix):  # 空文字列もチェック
                 # 直接の子供のみ（さらに深い階層は除外）
                 remainder = seq[len(prefix):]
                 if "." not in remainder and remainder.isdigit():
