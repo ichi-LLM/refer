@@ -413,8 +413,8 @@ class JAMAClient:
         # リクエストボディ作成
         request_data = {
             "project": self.project_id,
-            "itemType": item_data.get("item_type_id", 1),  # デフォルトは1
-            "childItemType": item_data.get("child_item_type_id", 1),
+            "itemType": item_data.get("item_type_id", 30),  # デフォルトは30（Requirement）
+            "childItemType": item_data.get("child_item_type_id", 30),  # デフォルトは30（Requirement）
             "fields": self._prepare_fields(item_data)
         }
         
