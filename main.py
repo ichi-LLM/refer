@@ -304,7 +304,7 @@ class JAMATool:
             # 新規作成アイテムのバリデーション
             if new_items:
                 logger.info("新規作成アイテムのバリデーション実行")
-                validation_errors = self.excel.validate_new_items(new_items, requirements)
+                validation_errors = self.excel.validate_new_items(new_items)
                 
                 if validation_errors:
                     print("\n❌ バリデーションエラーが見つかりました:")
