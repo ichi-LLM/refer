@@ -100,18 +100,18 @@ class ExcelHandler:
     }
     
     # デフォルトフォント設定
-    DEFAULT_FONT_NAME = 'Yu Gothic UI'
+    DEFAULT_FONT_NAME = 'BIZ UDPゴシック'
     
-    # 新規SYSP用テンプレート数
-    NEW_SYSP_TEMPLATE_COUNT = 200
+    # 新規System Requirement用テンプレート数
+    NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT = 200
     
     def __init__(self, config=None):
         """初期化"""
         self.wb = None
         self.requirement_sheet = None
-        self.description_sheet = None
+        self.system_description_sheet = None
         self.sequence_index = {}  # sequence検索用インデックス
-        self.sysp_template_map = {}  # SYSPテンプレートのマッピング
+        self.system_requirement_template_map = {}  # System Requirementテンプレートのマッピング
         self.all_existing_items = []  # バリデーション用の既存アイテム
         
         # 設定オブジェクトを保持
@@ -174,13 +174,13 @@ class ExcelHandler:
         # デフォルトフォントを設定
         self.wb._default_font = Font(name=self.DEFAULT_FONT_NAME)
         
-        # 最初にDescription_editシートを作成（マッピング情報を確立）
+        # 最初にSystem_Description_editシートを作成（マッピング情報を確立）
         if show_progress:
             # [2/4]は既にmain.pyで表示済み
             pass
-        logger.info("Description編集シート作成開始...")
-        self.description_sheet = self.wb.create_sheet("Description_edit")
-        self._create_description_sheet(items)
+        logger.info("System Description編集シート作成開始...")
+        self.system_description_sheet = self.wb.create_sheet("System_Description_edit")
+        self._create_system_description_sheet(items)
         
         # その後でRequirement_of_Driverシートを作成
         if show_progress:
@@ -220,8 +220,8 @@ class ExcelHandler:
         total_items = len(items)
         logger.info(f"データ行作成開始: {total_items}件")
         
-        # SYSPカウンター初期化
-        self._sysp_count = 0
+        # System Requirementカウンター初期化
+        self._system_requirement_count = 0
         
         row_num = 2
         for idx, item in enumerate(items, 1):
@@ -269,14 +269,14 @@ class ExcelHandler:
                     cell.value = item.get(field, default)
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
             
-            # SYSPアイテムのカスタムフィールドをログに出力（デバッグ用）
-            if "SYSP" in item.get("name", ""):
+            # System Requirementアイテムのカスタムフィールドをログに出力（デバッグ用）
+            if item.get("item_type_id") == 301:
                 custom_fields = {k: v for k, v in item.items() if k.startswith("custom_")}
-                # 最初の3件のSYSPアイテムのみカスタムフィールドを表示
-                sysp_count = getattr(self, '_sysp_count', 0)
-                if custom_fields and sysp_count < 3:
-                    logger.info(f"SYSP Item #{sysp_count + 1} custom fields: {list(custom_fields.keys())}")
-                    self._sysp_count = sysp_count + 1
+                # 最初の3件のSystem Requirementアイテムのみカスタムフィールドを表示
+                system_requirement_count = getattr(self, '_system_requirement_count', 0)
+                if custom_fields and system_requirement_count < 3:
+                    logger.info(f"STD Oneteam System Requirement (ID:301) Item #{system_requirement_count + 1} custom fields: {list(custom_fields.keys())}")
+                    self._system_requirement_count = system_requirement_count + 1
             
             # Description関連
             description = item.get("description", "")
@@ -286,23 +286,23 @@ class ExcelHandler:
                 cell.value = self._extract_table_preview(description)
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
                 
-                # SYSPのDescriptionがある場合は編集リンクを作成
-                if "SYSP" in item.get("name", ""):
+                # System RequirementのDescriptionがある場合は編集リンクを作成
+                if item.get("item_type_id") == 301:
                     cell = ws[f"W{row_num}"]
                     cell.value = ""  # デフォルトは空欄（更新しない）
                     cell.font = Font(name=self.DEFAULT_FONT_NAME)
                     
-                    # sysp_template_mapから正しいテンプレート位置を取得
-                    if hasattr(self, 'sysp_template_map') and (idx - 1) in self.sysp_template_map:
-                        template_row = self.sysp_template_map[idx - 1]
+                    # system_requirement_template_mapから正しいテンプレート位置を取得
+                    if hasattr(self, 'system_requirement_template_map') and (idx - 1) in self.system_requirement_template_map:
+                        template_row = self.system_requirement_template_map[idx - 1]
                         cell = ws[f"X{row_num}"]
                         cell.value = "編集画面へ"
                         # 要件名が見えるように、1行上にリンク
-                        cell.hyperlink = f"#Description_edit!A{template_row - 1}"
+                        cell.hyperlink = f"#System_Description_edit!A{template_row - 1}"
                         cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
                 else:
                     cell = ws[f"W{row_num}"]
-                    cell.value = ""  # 非SYSPも空欄
+                    cell.value = ""  # 非System Requirementも空欄
                     cell.font = Font(name=self.DEFAULT_FONT_NAME)
             else:
                 cell = ws[f"W{row_num}"]
@@ -332,7 +332,7 @@ class ExcelHandler:
             "1. 上記の最終行の下に新しい行を追加",
             "2. A列（JAMA_ID）は空欄のまま",
             "3. D～N列（階層1～11）に配置したい階層名を入力",
-            "4. 新規SYSPの場合：N列に「SYSP」を含む名前を入力し、X列に「#1」～「#200」を入力",
+            "4. 新規System Requirementの場合：N列に要件名を入力し、X列に「#1」～「#200」を入力",
             "5. その他の必要な情報を入力",
             "6. updateコマンドを実行"
         ]
@@ -342,14 +342,14 @@ class ExcelHandler:
             cell.value = instruction
             cell.font = Font(name=self.DEFAULT_FONT_NAME, color="666666", italic=True)
             
-        # 新規SYSP用の説明
+        # 新規System Requirement用の説明
         cell = ws[f"X{start_row + 4}"]
-        cell.value = "新規SYSPは#1～#200"
+        cell.value = "新規System Requirementは#1～#200"
         cell.font = Font(name=self.DEFAULT_FONT_NAME, color="FF0000", italic=True)
         
-    def _create_description_sheet(self, items: List[Dict]) -> None:
-        """Description編集シートを作成"""
-        ws = self.description_sheet
+    def _create_system_description_sheet(self, items: List[Dict]) -> None:
+        """System Description編集シートを作成"""
+        ws = self.system_description_sheet
         
         # スタイル定義
         header_fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
@@ -360,38 +360,38 @@ class ExcelHandler:
             bottom=Side(style='thin')
         )
         
-        # SYSPアイテムをフィルタリング
-        logger.info("SYSPアイテムをフィルタリング中...")
-        sysp_items = []
+        # System Requirementアイテムをフィルタリング（ItemType ID: 301）
+        logger.info("STD Oneteam System Requirement (ID:301)アイテムをフィルタリング中...")
+        system_requirement_items = []
         for idx, item in enumerate(items):
-            # nameフィールドにSYSPを含むかチェック
-            if "SYSP" in item.get("name", ""):
-                sysp_items.append((item, idx))
+            # item_type_idが301かチェック
+            if item.get("item_type_id") == 301:
+                system_requirement_items.append((item, idx))
         
-        logger.info(f"SYSPアイテム数: {len(sysp_items)}件")
+        logger.info(f"STD Oneteam System Requirement (ID:301)アイテム数: {len(system_requirement_items)}件")
         
-        if not sysp_items:
-            logger.info("SYSPアイテムが見つかりませんでした")
+        if not system_requirement_items:
+            logger.info("STD Oneteam System Requirement (ID:301)アイテムが見つかりませんでした")
             cell = ws["A1"]
-            cell.value = "SYSPアイテムが見つかりませんでした"
+            cell.value = "STD Oneteam System Requirement (ID:301)アイテムが見つかりませんでした"
             cell.font = Font(name=self.DEFAULT_FONT_NAME)
         else:
-            # 既存のSYSPアイテムにテンプレートを作成
+            # 既存のSystem Requirementアイテムにテンプレートを作成
             current_row = 10
-            total_sysp = len(sysp_items)
+            total_system_requirement = len(system_requirement_items)
             
-            logger.info(f"Descriptionテンプレート作成開始: {total_sysp}件")
+            logger.info(f"System Descriptionテンプレート作成開始: {total_system_requirement}件")
             
-            # SYSPアイテムのインデックスを保存（リンク作成用）
-            self.sysp_template_map = {}  # row_index -> template_start_row
+            # System Requirementアイテムのインデックスを保存（リンク作成用）
+            self.system_requirement_template_map = {}  # row_index -> template_start_row
             
-            for idx, (item, original_idx) in enumerate(sysp_items, 1):
+            for idx, (item, original_idx) in enumerate(system_requirement_items, 1):
                 # 進捗表示
-                if idx % 100 == 0 or idx == total_sysp:
-                    logger.info(f"Descriptionテンプレート作成進捗: {idx}/{total_sysp} ({idx/total_sysp*100:.1f}%)")
+                if idx % 100 == 0 or idx == total_system_requirement:
+                    logger.info(f"System Descriptionテンプレート作成進捗: {idx}/{total_system_requirement} ({idx/total_system_requirement*100:.1f}%)")
                     
                 # マッピング情報を保存
-                self.sysp_template_map[original_idx] = current_row
+                self.system_requirement_template_map[original_idx] = current_row
                 
                 # ヘッダー行（【JAMA_ID】要件名の形式で表示）
                 jama_id = item.get('jama_id', '新規')
@@ -428,18 +428,18 @@ class ExcelHandler:
                 
                 current_row += 16  # 次のテンプレートまでの間隔
                 
-            logger.info(f"Descriptionテンプレート作成完了: {total_sysp}件")
+            logger.info(f"System Descriptionテンプレート作成完了: {total_system_requirement}件")
         
-        # 新規SYSP用のテンプレートを追加
-        logger.info(f"新規SYSP用テンプレート作成開始: {self.NEW_SYSP_TEMPLATE_COUNT}件")
-        self._create_new_sysp_templates(ws, current_row if 'current_row' in locals() else 10)
-        logger.info("新規SYSP用テンプレート作成完了")
+        # 新規System Requirement用のテンプレートを追加
+        logger.info(f"新規System Requirement用テンプレート作成開始: {self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT}件")
+        self._create_new_system_requirement_templates(ws, current_row if 'current_row' in locals() else 10)
+        logger.info("新規System Requirement用テンプレート作成完了")
                     
-    def _create_new_sysp_templates(self, ws, start_row: int) -> None:
-        """新規SYSP用の空テンプレートを作成"""
+    def _create_new_system_requirement_templates(self, ws, start_row: int) -> None:
+        """新規System Requirement用の空テンプレートを作成"""
         # セクションタイトル
         cell = ws[f"A{start_row}"]
-        cell.value = "=== 新規SYSP要件追加用テンプレート ==="
+        cell.value = "=== 新規STD Oneteam System Requirement (ID:301)追加用テンプレート ==="
         cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=14, color="FF0000")
         merge_end_col = get_column_letter(min(20, self.desc_total_cols))
         ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
@@ -447,14 +447,14 @@ class ExcelHandler:
         start_row += 3
         
         # 新規テンプレートを作成
-        for i in range(1, self.NEW_SYSP_TEMPLATE_COUNT + 1):
+        for i in range(1, self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT + 1):
             # 進捗表示（50個ごと）
             if i % 50 == 0:
-                logger.info(f"新規テンプレート作成進捗: {i}/{self.NEW_SYSP_TEMPLATE_COUNT}")
+                logger.info(f"新規テンプレート作成進捗: {i}/{self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT}")
                 
             # ヘッダー行
             cell = ws[f"A{start_row}"]
-            cell.value = f"【新規SYSP #{i}】ここに要件名を入力"
+            cell.value = f"【新規System Requirement #{i}】ここに要件名を入力"
             cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, color="FF0000")
             merge_end_col = get_column_letter(min(10, self.desc_total_cols))
             ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
@@ -753,7 +753,7 @@ class ExcelHandler:
             print("Excelファイルを開きました。データを処理しています...")
         
             requirement_sheet = wb["Requirement_of_Driver"]
-            description_sheet = wb["Description_edit"] if "Description_edit" in wb.sheetnames else None
+            system_description_sheet = wb["System_Description_edit"] if "System_Description_edit" in wb.sheetnames else None
         
             requirements = []
             total_rows = requirement_sheet.max_row - 1  # ヘッダー行を除く
@@ -873,21 +873,21 @@ class ExcelHandler:
                         item[field_name] = value
             
                 # Description更新チェック
-                if (update_flag == "する" or operation == "新規") and description_sheet:
-                    # 新規SYSPの場合、X列をチェック
+                if (update_flag == "する" or operation == "新規") and system_description_sheet:
+                    # 新規System Requirementの場合、X列をチェック
                     desc_ref = requirement_sheet[f"X{row_num}"].value
                     if desc_ref:
                         # 新規の仮リンク（#1など）か通常のリンクかを判定
                         if str(desc_ref).startswith("#"):
-                            # 新規SYSP用テンプレートから読み込み
-                            new_description = self._read_new_sysp_description(
-                                description_sheet, 
+                            # 新規System Requirement用テンプレートから読み込み
+                            new_description = self._read_new_system_requirement_description(
+                                system_description_sheet, 
                                 desc_ref
                             )
                         else:
                             # 通常のDescription読み込み
                             new_description = self._read_description_from_sheet(
-                                description_sheet, 
+                                system_description_sheet, 
                                 item.get("jama_id", "新規")
                             )
                         
@@ -1130,12 +1130,12 @@ class ExcelHandler:
             
         return f"{prefix}{next_num}" if prefix else str(next_num)
             
-    def _read_new_sysp_description(self, ws, template_ref: str) -> Optional[str]:
+    def _read_new_system_requirement_description(self, ws, template_ref: str) -> Optional[str]:
         """
-        新規SYSP用テンプレートからDescriptionを読み込み
+        新規System Requirement用テンプレートからDescriptionを読み込み
         
         Args:
-            ws: Description_editワークシート
+            ws: System_Description_editワークシート
             template_ref: テンプレート参照（例: "#1"）
             
         Returns:
@@ -1143,7 +1143,7 @@ class ExcelHandler:
         """
         # #を除いた番号を取得
         template_num = template_ref.strip("#")
-        search_pattern = f"【新規SYSP #{template_num}】"
+        search_pattern = f"【新規System Requirement #{template_num}】"
         
         for row in range(1, ws.max_row + 1):
             cell_value = ws[f"A{row}"].value
@@ -1170,10 +1170,10 @@ class ExcelHandler:
             
     def _read_description_from_sheet(self, ws, jama_id: str) -> Optional[str]:
         """
-        Description編集シートから新しいDescriptionを読み込み（拡張性対応版）
+        System Description編集シートから新しいDescriptionを読み込み（拡張性対応版）
         
         Args:
-            ws: Description_editワークシート
+            ws: System_Description_editワークシート
             jama_id: JAMA ID
             
         Returns:
