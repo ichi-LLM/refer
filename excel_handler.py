@@ -453,6 +453,11 @@ class ExcelHandler:
         logger.info(f"新規System Requirement用テンプレート作成開始: {self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT}件")
         self._create_new_system_requirement_templates(ws, current_row if 'current_row' in locals() else 10)
         logger.info("新規System Requirement用テンプレート作成完了")
+        
+        # 列幅調整
+        logger.info("System Description編集シートの列幅調整中...")
+        self._adjust_column_widths(ws, self.desc_total_cols)
+        logger.info("列幅調整完了")
                     
     def _create_new_system_requirement_templates(self, ws, start_row: int) -> None:
         """新規System Requirement用の空テンプレートを作成"""
@@ -718,9 +723,19 @@ class ExcelHandler:
         # 構造が正しいことを確認したら、値を返す
         return table
     
-    def _adjust_column_widths(self, ws) -> None:
-        """列幅を自動調整"""
-        total_columns = len(self.COLUMNS)
+    def _adjust_column_widths(self, ws, max_columns: Optional[int] = None) -> None:
+        """
+        列幅を自動調整
+        
+        Args:
+            ws: ワークシート
+            max_columns: 調整する最大列数（Noneの場合はCOLUMNSの数）
+        """
+        if max_columns is None:
+            total_columns = len(self.COLUMNS)
+        else:
+            total_columns = max_columns
+            
         logger.info(f"列幅自動調整開始: {total_columns}列")
         
         for idx, column in enumerate(ws.columns, 1):
