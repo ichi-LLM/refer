@@ -264,7 +264,26 @@ class ExcelHandler:
             ]:
                 cell = ws[f"{col}{row_num}"]
                 if field == "item_type":
-                    cell.value = default
+                    # アイテムタイプを実際のIDから名前に変換
+                    if item.get("item_type_id"):
+                        # 既存要件：実際のIDから名前を取得
+                        type_name = self.config.get_item_type_name(item["item_type_id"]) if self.config else "Unknown"
+                        cell.value = type_name
+                    else:
+                        # 新規要件：階層と名前から推定
+                        # 階層情報から階層レベルを計算
+                        hierarchy_level = len(hierarchy)
+                        if hierarchy_level in [10, 11]:
+                            # 10-11階層は要件名で判定
+                            item_type_id = self._determine_item_type_by_name_for_excel(item.get("name", ""), hierarchy_level)
+                        else:
+                            # 1-9階層は設定から取得
+                            item_type_id = self.config.get_item_type_for_level(hierarchy_level) if self.config else None
+                        
+                        if item_type_id and self.config:
+                            cell.value = self.config.get_item_type_name(item_type_id)
+                        else:
+                            cell.value = default
                 else:
                     cell.value = item.get(field, default)
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
@@ -1298,12 +1317,37 @@ class ExcelHandler:
                 hierarchy_level = dot_count + 1
                 
                 # 設定オブジェクトがある場合のみチェック
-                if self.config and not self.config.is_item_type_defined_for_level(hierarchy_level):
-                    if hierarchy_level == 9:
-                        errors.append(f"階層9（Set）への新規作成はまだサポートされていません。item_type_idが未定義です。")
-                    elif hierarchy_level == 10:
-                        errors.append(f"階層10（Folder）への新規作成はまだサポートされていません。item_type_idが未定義です。")
-                    else:
-                        errors.append(f"階層{hierarchy_level}への新規作成はサポートされていません。")
+                if self.config and hierarchy_level < 10 and not self.config.is_item_type_defined_for_level(hierarchy_level):
+                    # 1-9階層で未定義の場合のみエラー（10-11は動的判定なのでエラーにしない）
+                    errors.append(f"階層{hierarchy_level}への新規作成はサポートされていません。item_type_idが未定義です。")
                 
         return errors
+    
+    def _determine_item_type_by_name_for_excel(self, name: str, hierarchy_level: int) -> int:
+        """
+        要件名から10-11階層のアイテムタイプIDを判定（Excel用）
+        
+        Args:
+            name: 要件名
+            hierarchy_level: 階層レベル（10 or 11）
+            
+        Returns:
+            アイテムタイプID
+        """
+        if not name or not self.config:
+            return self.config.default_item_type_for_10_11 if self.config else 301
+        
+        # 大文字小文字を区別しない判定
+        name_upper = name.upper()
+        
+        # より長い一致を優先するため、長い順にチェック
+        if name_upper.startswith("SYFR"):
+            return 301  # STD Oneteam System Requirement
+        elif name_upper.startswith("SYSP"):
+            return 301  # STD Oneteam System Requirement
+        elif name_upper.startswith("FR"):
+            return 266  # STD User Requirement
+        elif name_upper.startswith("SP"):
+            return 266  # STD User Requirement
+        else:
+            return self.config.default_item_type_for_10_11
