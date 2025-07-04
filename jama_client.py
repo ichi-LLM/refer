@@ -414,7 +414,12 @@ class JAMAClient:
         hierarchy_level = self._calculate_hierarchy_level(item_data)
         
         # 階層レベルに応じたitem_type_idを取得
-        item_type_id = self.config.get_item_type_for_level(hierarchy_level)
+        if hierarchy_level in [10, 11]:
+            # 10-11階層は要件名で動的判定
+            item_type_id = self._determine_item_type_by_name(item_data.get("name", ""), hierarchy_level)
+        else:
+            # 1-9階層は設定から取得
+            item_type_id = self.config.get_item_type_for_level(hierarchy_level)
         
         if item_type_id is None:
             raise Exception(f"階層{hierarchy_level}のアイテムタイプIDが未定義です。config.jsonのitem_type_mappingを確認してください。")
@@ -485,6 +490,41 @@ class JAMAClient:
             # sequenceがない場合は1（ルート直下）
             logger.warning("calculated_sequenceが設定されていません。階層レベル1と仮定します。")
             return 1
+    
+    def _determine_item_type_by_name(self, name: str, hierarchy_level: int) -> int:
+        """
+        要件名から10-11階層のアイテムタイプIDを判定
+        
+        Args:
+            name: 要件名
+            hierarchy_level: 階層レベル（10 or 11）
+            
+        Returns:
+            アイテムタイプID
+        """
+        if not name:
+            logger.warning(f"階層{hierarchy_level}の要件名が空です。デフォルトのアイテムタイプIDを使用します。")
+            return self.config.default_item_type_for_10_11
+        
+        # 大文字小文字を区別しない判定
+        name_upper = name.upper()
+        
+        # より長い一致を優先するため、長い順にチェック
+        if name_upper.startswith("SYFR"):
+            logger.info(f"要件名'{name}'はSYFRで始まるため、STD Oneteam System Requirement (ID:301)と判定")
+            return 301
+        elif name_upper.startswith("SYSP"):
+            logger.info(f"要件名'{name}'はSYSPで始まるため、STD Oneteam System Requirement (ID:301)と判定")
+            return 301
+        elif name_upper.startswith("FR"):
+            logger.info(f"要件名'{name}'はFRで始まるため、STD User Requirement (ID:266)と判定")
+            return 266
+        elif name_upper.startswith("SP"):
+            logger.info(f"要件名'{name}'はSPで始まるため、STD User Requirement (ID:266)と判定")
+            return 266
+        else:
+            logger.warning(f"階層{hierarchy_level}の要件名'{name}'は判定パターンに一致しません。デフォルトのアイテムタイプID={self.config.default_item_type_for_10_11}を使用します。")
+            return self.config.default_item_type_for_10_11
         
     def update_item(self, item_id: int, item_data: Dict) -> None:
         """
