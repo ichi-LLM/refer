@@ -90,14 +90,23 @@ class ExcelHandler:
         'X': '新Description参照'
     }
     
-    # Description編集シートの列幅（拡張性を持たせる）
-    # 将来的に列数を変更する場合は、この値を変更するだけでOK
-    DESC_COLS = {
+    # System Description編集シートの列幅（拡張性を持たせる）
+    SYSTEM_DESC_COLS = {
         'a': 1,      # (a)Trigger action: 1列
         'b': 67,     # (b)Behavior of ego-vehicle: 67列（64から拡張）
         'c': 10,     # (c)HMI: 10列
         'd': 5       # (d)Other: 5列
     }
+    
+    # User Description編集シートの列幅（拡張性を持たせる）
+    USER_DESC_COLS = {
+        'a': 1,      # (a)Trigger action: 1列
+        'c': 4       # (c)HMI: 4列
+    }
+    
+    # 固定列幅設定
+    FIXED_COLUMN_WIDTH_A = 16  # A列の幅
+    FIXED_COLUMN_WIDTH_OTHER = 24  # その他の列の幅
     
     # デフォルトフォント設定
     DEFAULT_FONT_NAME = 'BIZ UDPゴシック'
@@ -105,13 +114,18 @@ class ExcelHandler:
     # 新規System Requirement用テンプレート数
     NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT = 200
     
+    # 新規User Requirement用テンプレート数
+    NEW_USER_REQUIREMENT_TEMPLATE_COUNT = 200
+    
     def __init__(self, config=None):
         """初期化"""
         self.wb = None
         self.requirement_sheet = None
         self.system_description_sheet = None
+        self.user_description_sheet = None
         self.sequence_index = {}  # sequence検索用インデックス
         self.system_requirement_template_map = {}  # System Requirementテンプレートのマッピング
+        self.user_requirement_template_map = {}  # User Requirementテンプレートのマッピング
         self.all_existing_items = []  # バリデーション用の既存アイテム
         
         # 設定オブジェクトを保持
@@ -124,34 +138,56 @@ class ExcelHandler:
             self.column_width_check_rows = 100
             
     @property
-    def desc_total_cols(self):
-        """Description編集シートの総列数を動的に計算"""
+    def system_desc_total_cols(self):
+        """System Description編集シートの総列数を動的に計算"""
         # 1(行ヘッダー) + 各項目の列数の合計
-        return 1 + sum(self.DESC_COLS.values())
+        return 1 + sum(self.SYSTEM_DESC_COLS.values())
         
-    def _get_column_positions(self):
-        """各項目の列位置を動的に計算"""
+    @property
+    def user_desc_total_cols(self):
+        """User Description編集シートの総列数を動的に計算"""
+        # 1(行ヘッダー) + 各項目の列数の合計
+        return 1 + sum(self.USER_DESC_COLS.values())
+        
+    def _get_system_column_positions(self):
+        """System Description用の各項目の列位置を動的に計算"""
         positions = {}
         col_idx = 2  # B列から開始（A列は行ヘッダー）
         
         # (a) Trigger action
         positions['a_start'] = col_idx
-        positions['a_end'] = col_idx + self.DESC_COLS['a'] - 1
+        positions['a_end'] = col_idx + self.SYSTEM_DESC_COLS['a'] - 1
         col_idx = positions['a_end'] + 1
         
         # (b) Behavior of ego-vehicle
         positions['b_start'] = col_idx
-        positions['b_end'] = col_idx + self.DESC_COLS['b'] - 1
+        positions['b_end'] = col_idx + self.SYSTEM_DESC_COLS['b'] - 1
         col_idx = positions['b_end'] + 1
         
         # (c) HMI
         positions['c_start'] = col_idx
-        positions['c_end'] = col_idx + self.DESC_COLS['c'] - 1
+        positions['c_end'] = col_idx + self.SYSTEM_DESC_COLS['c'] - 1
         col_idx = positions['c_end'] + 1
         
         # (d) Other
         positions['d_start'] = col_idx
-        positions['d_end'] = col_idx + self.DESC_COLS['d'] - 1
+        positions['d_end'] = col_idx + self.SYSTEM_DESC_COLS['d'] - 1
+        
+        return positions
+        
+    def _get_user_column_positions(self):
+        """User Description用の各項目の列位置を動的に計算"""
+        positions = {}
+        col_idx = 2  # B列から開始（A列は行ヘッダー）
+        
+        # (a) Trigger action
+        positions['a_start'] = col_idx
+        positions['a_end'] = col_idx + self.USER_DESC_COLS['a'] - 1
+        col_idx = positions['a_end'] + 1
+        
+        # (c) HMI
+        positions['c_start'] = col_idx
+        positions['c_end'] = col_idx + self.USER_DESC_COLS['c'] - 1
         
         return positions
         
@@ -174,15 +210,23 @@ class ExcelHandler:
         # デフォルトフォントを設定
         self.wb._default_font = Font(name=self.DEFAULT_FONT_NAME)
         
-        # 最初にSystem_Description_editシートを作成（マッピング情報を確立）
+        # シート作成順序を変更：User → System → Requirement
+        
+        # 1. User_Description_editシートを作成
         if show_progress:
-            # [2/4]は既にmain.pyで表示済み
-            pass
+            print("\n[2/4] User Description編集シート作成中...")
+        logger.info("User Description編集シート作成開始...")
+        self.user_description_sheet = self.wb.create_sheet("User_Description_edit")
+        self._create_user_description_sheet(items)
+        
+        # 2. System_Description_editシートを作成
+        if show_progress:
+            print("\n[2/4] System Description編集シート作成中...")
         logger.info("System Description編集シート作成開始...")
         self.system_description_sheet = self.wb.create_sheet("System_Description_edit")
         self._create_system_description_sheet(items)
         
-        # その後でRequirement_of_Driverシートを作成
+        # 3. Requirement_of_Driverシートを作成
         if show_progress:
             print("\n[3/4] 要件一覧シート作成中...")
         logger.info("要件一覧シート作成開始...")
@@ -220,8 +264,9 @@ class ExcelHandler:
         total_items = len(items)
         logger.info(f"データ行作成開始: {total_items}件")
         
-        # System Requirementカウンター初期化
+        # System/User Requirementカウンター初期化
         self._system_requirement_count = 0
+        self._user_requirement_count = 0
         
         row_num = 2
         for idx, item in enumerate(items, 1):
@@ -288,15 +333,6 @@ class ExcelHandler:
                     cell.value = item.get(field, default)
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
             
-            # System Requirementアイテムのカスタムフィールドをログに出力（デバッグ用）
-            if item.get("item_type_id") == 301:
-                custom_fields = {k: v for k, v in item.items() if k.startswith("custom_")}
-                # 最初の3件のSystem Requirementアイテムのみカスタムフィールドを表示
-                system_requirement_count = getattr(self, '_system_requirement_count', 0)
-                if custom_fields and system_requirement_count < 3:
-                    logger.info(f"STD Oneteam System Requirement (ID:301) Item #{system_requirement_count + 1} custom fields: {list(custom_fields.keys())}")
-                    self._system_requirement_count = system_requirement_count + 1
-            
             # Description関連
             description = item.get("description", "")
             if description:
@@ -305,23 +341,31 @@ class ExcelHandler:
                 cell.value = self._extract_table_preview(description)
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
                 
-                # System RequirementのDescriptionがある場合は編集リンクを作成
-                if item.get("item_type_id") == 301:
+                # System RequirementまたはUser RequirementのDescriptionがある場合は編集リンクを作成
+                item_type_id = item.get("item_type_id")
+                if item_type_id in [301, 266]:
                     cell = ws[f"W{row_num}"]
                     cell.value = ""  # デフォルトは空欄（更新しない）
                     cell.font = Font(name=self.DEFAULT_FONT_NAME)
                     
-                    # system_requirement_template_mapから正しいテンプレート位置を取得
-                    if hasattr(self, 'system_requirement_template_map') and (idx - 1) in self.system_requirement_template_map:
+                    # 適切なテンプレートマップから正しいテンプレート位置を取得
+                    if item_type_id == 301 and hasattr(self, 'system_requirement_template_map') and (idx - 1) in self.system_requirement_template_map:
                         template_row = self.system_requirement_template_map[idx - 1]
                         cell = ws[f"X{row_num}"]
                         cell.value = "編集画面へ"
                         # 要件名が見えるように、1行上にリンク
                         cell.hyperlink = f"#System_Description_edit!A{template_row - 1}"
                         cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+                    elif item_type_id == 266 and hasattr(self, 'user_requirement_template_map') and (idx - 1) in self.user_requirement_template_map:
+                        template_row = self.user_requirement_template_map[idx - 1]
+                        cell = ws[f"X{row_num}"]
+                        cell.value = "編集画面へ"
+                        # 要件名が見えるように、1行上にリンク
+                        cell.hyperlink = f"#User_Description_edit!A{template_row - 1}"
+                        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
                 else:
                     cell = ws[f"W{row_num}"]
-                    cell.value = ""  # 非System Requirementも空欄
+                    cell.value = ""  # 非System/User Requirementも空欄
                     cell.font = Font(name=self.DEFAULT_FONT_NAME)
             else:
                 cell = ws[f"W{row_num}"]
@@ -351,9 +395,10 @@ class ExcelHandler:
             "1. 上記の最終行の下に新しい行を追加",
             "2. A列（JAMA_ID）は空欄のまま",
             "3. D～N列（階層1～11）に配置したい階層名を入力",
-            "4. 新規System Requirementの場合：N列に要件名を入力し、X列に「#1」～「#200」を入力",
-            "5. その他の必要な情報を入力",
-            "6. updateコマンドを実行"
+            "4. 新規System Requirementの場合：N列に要件名を入力し、X列に「#S1」～「#S200」を入力",
+            "5. 新規User Requirementの場合：N列に要件名を入力し、X列に「#U1」～「#U200」を入力",
+            "6. その他の必要な情報を入力",
+            "7. updateコマンドを実行"
         ]
         
         for i, instruction in enumerate(instructions):
@@ -361,10 +406,107 @@ class ExcelHandler:
             cell.value = instruction
             cell.font = Font(name=self.DEFAULT_FONT_NAME, color="666666", italic=True)
             
-        # 新規System Requirement用の説明
+        # 新規要件用の説明
         cell = ws[f"X{start_row + 4}"]
-        cell.value = "新規System Requirementは#1～#200"
+        cell.value = "新規System Req: #S1～#S200"
         cell.font = Font(name=self.DEFAULT_FONT_NAME, color="FF0000", italic=True)
+        
+        cell = ws[f"X{start_row + 5}"]
+        cell.value = "新規User Req: #U1～#U200"
+        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="FF0000", italic=True)
+        
+    def _create_user_description_sheet(self, items: List[Dict]) -> None:
+        """User Description編集シートを作成"""
+        ws = self.user_description_sheet
+        
+        # スタイル定義
+        header_fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # User Requirementアイテムをフィルタリング（ItemType ID: 266）
+        logger.info("STD User Requirement (ID:266)アイテムをフィルタリング中...")
+        user_requirement_items = []
+        for idx, item in enumerate(items):
+            # item_type_idが266かチェック
+            if item.get("item_type_id") == 266:
+                user_requirement_items.append((item, idx))
+        
+        logger.info(f"STD User Requirement (ID:266)アイテム数: {len(user_requirement_items)}件")
+        
+        if not user_requirement_items:
+            logger.info("STD User Requirement (ID:266)アイテムが見つかりませんでした")
+            cell = ws["A1"]
+            cell.value = "STD User Requirement (ID:266)アイテムが見つかりませんでした"
+            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        else:
+            # 既存のUser Requirementアイテムにテンプレートを作成
+            current_row = 10
+            total_user_requirement = len(user_requirement_items)
+            
+            logger.info(f"User Descriptionテンプレート作成開始: {total_user_requirement}件")
+            
+            # User Requirementアイテムのインデックスを保存（リンク作成用）
+            self.user_requirement_template_map = {}  # row_index -> template_start_row
+            
+            for idx, (item, original_idx) in enumerate(user_requirement_items, 1):
+                # 進捗表示
+                if idx % 100 == 0 or idx == total_user_requirement:
+                    logger.info(f"User Descriptionテンプレート作成進捗: {idx}/{total_user_requirement} ({idx/total_user_requirement*100:.1f}%)")
+                    
+                # マッピング情報を保存
+                self.user_requirement_template_map[original_idx] = current_row
+                
+                # ヘッダー行（【JAMA_ID】要件名の形式で表示）
+                jama_id = item.get('jama_id', '新規')
+                name = item.get("name", "")
+                cell = ws[f"A{current_row - 2}"]
+                cell.value = f"【{jama_id}】{name}"
+                cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True)
+                # 列の結合を動的に計算
+                merge_end_col = get_column_letter(min(10, self.user_desc_total_cols))
+                ws.merge_cells(f"A{current_row - 2}:{merge_end_col}{current_row - 2}")
+                
+                # 要件名を表示（リンク先の1つ上）
+                cell = ws[f"A{current_row - 1}"]
+                cell.value = name
+                cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=12)
+                ws.merge_cells(f"A{current_row - 1}:{merge_end_col}{current_row - 1}")
+                
+                # 一覧に戻るリンク
+                link_col = get_column_letter(min(11, self.user_desc_total_cols))
+                cell = ws[f"{link_col}{current_row - 1}"]
+                cell.value = "一覧に戻る"
+                cell.hyperlink = f"#Requirement_of_Driver!A{original_idx + 2}"
+                cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+                
+                # 既存のDescriptionをパース
+                existing_data = None
+                if item.get("description"):
+                    existing_data = self._parse_existing_user_description_table(item.get("description"))
+                    if existing_data:
+                        logger.info(f"既存のDescriptionテーブルを検出: JAMA_ID={jama_id}")
+                
+                # 3行テーブルのテンプレート作成（既存データがあれば渡す）
+                self._create_user_description_template(ws, current_row, existing_data)
+                
+                current_row += 12  # 次のテンプレートまでの間隔（3行テーブルなので間隔を調整）
+                
+            logger.info(f"User Descriptionテンプレート作成完了: {total_user_requirement}件")
+        
+        # 新規User Requirement用のテンプレートを追加
+        logger.info(f"新規User Requirement用テンプレート作成開始: {self.NEW_USER_REQUIREMENT_TEMPLATE_COUNT}件")
+        self._create_new_user_requirement_templates(ws, current_row if 'current_row' in locals() else 10)
+        logger.info("新規User Requirement用テンプレート作成完了")
+        
+        # 列幅設定（固定幅）
+        logger.info("User Description編集シートの列幅設定中...")
+        self._set_fixed_column_widths(ws, self.user_desc_total_cols)
+        logger.info("列幅設定完了")
         
     def _create_system_description_sheet(self, items: List[Dict]) -> None:
         """System Description編集シートを作成"""
@@ -419,7 +561,7 @@ class ExcelHandler:
                 cell.value = f"【{jama_id}】{name}"
                 cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True)
                 # 列の結合を動的に計算
-                merge_end_col = get_column_letter(min(10, self.desc_total_cols))
+                merge_end_col = get_column_letter(min(10, self.system_desc_total_cols))
                 ws.merge_cells(f"A{current_row - 2}:{merge_end_col}{current_row - 2}")
                 
                 # 要件名を表示（リンク先の1つ上）
@@ -429,7 +571,7 @@ class ExcelHandler:
                 ws.merge_cells(f"A{current_row - 1}:{merge_end_col}{current_row - 1}")
                 
                 # 一覧に戻るリンク
-                link_col = get_column_letter(min(11, self.desc_total_cols))
+                link_col = get_column_letter(min(11, self.system_desc_total_cols))
                 cell = ws[f"{link_col}{current_row - 1}"]
                 cell.value = "一覧に戻る"
                 cell.hyperlink = f"#Requirement_of_Driver!A{original_idx + 2}"
@@ -454,10 +596,45 @@ class ExcelHandler:
         self._create_new_system_requirement_templates(ws, current_row if 'current_row' in locals() else 10)
         logger.info("新規System Requirement用テンプレート作成完了")
         
-        # 列幅調整
-        logger.info("System Description編集シートの列幅調整中...")
-        self._adjust_column_widths(ws, self.desc_total_cols)
-        logger.info("列幅調整完了")
+        # 列幅設定（固定幅）
+        logger.info("System Description編集シートの列幅設定中...")
+        self._set_fixed_column_widths(ws, self.system_desc_total_cols)
+        logger.info("列幅設定完了")
+        
+    def _create_new_user_requirement_templates(self, ws, start_row: int) -> None:
+        """新規User Requirement用の空テンプレートを作成"""
+        # セクションタイトル
+        cell = ws[f"A{start_row}"]
+        cell.value = "=== 新規STD User Requirement (ID:266)追加用テンプレート ==="
+        cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=14, color="FF0000")
+        merge_end_col = get_column_letter(min(20, self.user_desc_total_cols))
+        ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
+        
+        start_row += 3
+        
+        # 新規テンプレートを作成
+        for i in range(1, self.NEW_USER_REQUIREMENT_TEMPLATE_COUNT + 1):
+            # 進捗表示（50個ごと）
+            if i % 50 == 0:
+                logger.info(f"新規User Requirementテンプレート作成進捗: {i}/{self.NEW_USER_REQUIREMENT_TEMPLATE_COUNT}")
+                
+            # ヘッダー行
+            cell = ws[f"A{start_row}"]
+            cell.value = f"【新規User Requirement #U{i}】ここに要件名を入力"
+            cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, color="FF0000")
+            merge_end_col = get_column_letter(min(10, self.user_desc_total_cols))
+            ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
+            
+            # 使用方法の説明
+            cell = ws[f"A{start_row + 1}"]
+            cell.value = f"Requirement_of_DriverシートのX列に「#U{i}」と入力してこのテンプレートを使用"
+            cell.font = Font(name=self.DEFAULT_FONT_NAME, italic=True, color="666666", size=9)
+            ws.merge_cells(f"A{start_row + 1}:{merge_end_col}{start_row + 1}")
+            
+            # 空のテンプレート作成
+            self._create_user_description_template(ws, start_row + 3, None)
+            
+            start_row += 12  # 次のテンプレートまでの間隔（3行テーブルなので間隔を調整）
                     
     def _create_new_system_requirement_templates(self, ws, start_row: int) -> None:
         """新規System Requirement用の空テンプレートを作成"""
@@ -465,7 +642,7 @@ class ExcelHandler:
         cell = ws[f"A{start_row}"]
         cell.value = "=== 新規STD Oneteam System Requirement (ID:301)追加用テンプレート ==="
         cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=14, color="FF0000")
-        merge_end_col = get_column_letter(min(20, self.desc_total_cols))
+        merge_end_col = get_column_letter(min(20, self.system_desc_total_cols))
         ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
         
         start_row += 3
@@ -474,18 +651,18 @@ class ExcelHandler:
         for i in range(1, self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT + 1):
             # 進捗表示（50個ごと）
             if i % 50 == 0:
-                logger.info(f"新規テンプレート作成進捗: {i}/{self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT}")
+                logger.info(f"新規System Requirementテンプレート作成進捗: {i}/{self.NEW_SYSTEM_REQUIREMENT_TEMPLATE_COUNT}")
                 
             # ヘッダー行
             cell = ws[f"A{start_row}"]
-            cell.value = f"【新規System Requirement #{i}】ここに要件名を入力"
+            cell.value = f"【新規System Requirement #S{i}】ここに要件名を入力"
             cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, color="FF0000")
-            merge_end_col = get_column_letter(min(10, self.desc_total_cols))
+            merge_end_col = get_column_letter(min(10, self.system_desc_total_cols))
             ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
             
             # 使用方法の説明
             cell = ws[f"A{start_row + 1}"]
-            cell.value = f"Requirement_of_DriverシートのX列に「#{i}」と入力してこのテンプレートを使用"
+            cell.value = f"Requirement_of_DriverシートのX列に「#S{i}」と入力してこのテンプレートを使用"
             cell.font = Font(name=self.DEFAULT_FONT_NAME, italic=True, color="666666", size=9)
             ws.merge_cells(f"A{start_row + 1}:{merge_end_col}{start_row + 1}")
             
@@ -494,17 +671,17 @@ class ExcelHandler:
             
             start_row += 16  # 次のテンプレートまでの間隔
             
-    def _create_description_template(self, ws, start_row: int, existing_data: Optional[List[List[str]]] = None) -> None:
+    def _create_user_description_template(self, ws, start_row: int, existing_data: Optional[List[List[str]]] = None) -> None:
         """
-        5行形式のDescriptionテンプレートを作成（拡張性対応版）
+        3行形式のUser Descriptionテンプレートを作成（拡張性対応版）
         
         Args:
             ws: ワークシート
             start_row: 開始行
-            existing_data: 既存のテーブルデータ（5行のリスト）
+            existing_data: 既存のテーブルデータ（3行のリスト）
         """
         # 列の位置を動的に計算
-        pos = self._get_column_positions()
+        pos = self._get_user_column_positions()
         
         # スタイル
         border = Border(
@@ -529,7 +706,81 @@ class ExcelHandler:
         cell.font = Font(name=self.DEFAULT_FONT_NAME)
         
         # OUTを最後まで結合（動的に計算）
-        end_col = get_column_letter(self.desc_total_cols)
+        end_col = get_column_letter(self.user_desc_total_cols)
+        ws.merge_cells(f"C{start_row}:{end_col}{start_row}")
+        
+        # 2行目: 項目名
+        cell = ws.cell(row=start_row + 1, column=1, value="")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        # (a) Trigger action
+        cell = ws.cell(row=start_row + 1, column=pos['a_start'], value="(a)Trigger action")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        # (c) HMI（動的に結合）
+        cell = ws.cell(row=start_row + 1, column=pos['c_start'], value="(c)HMI")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        if pos['c_end'] > pos['c_start']:
+            ws.merge_cells(f"{get_column_letter(pos['c_start'])}{start_row + 1}:{get_column_letter(pos['c_end'])}{start_row + 1}")
+            
+        # 3行目: 要件
+        cell = ws.cell(row=start_row + 2, column=1, value="要件")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        # 入力セルを配置（動的に範囲を計算）
+        for col in range(2, self.user_desc_total_cols + 1):
+            cell = ws.cell(row=start_row + 2, column=col)
+            
+            # 既存データがある場合は値を設定
+            if existing_data and len(existing_data) > 2 and col <= len(existing_data[2]):
+                cell.value = existing_data[2][col - 1]
+            else:
+                cell.value = ""
+                
+            cell.border = border
+            cell.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            
+    def _create_description_template(self, ws, start_row: int, existing_data: Optional[List[List[str]]] = None) -> None:
+        """
+        5行形式のDescriptionテンプレートを作成（拡張性対応版）
+        
+        Args:
+            ws: ワークシート
+            start_row: 開始行
+            existing_data: 既存のテーブルデータ（5行のリスト）
+        """
+        # 列の位置を動的に計算
+        pos = self._get_system_column_positions()
+        
+        # スタイル
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        header_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+        
+        # 1行目: I/O Type
+        cell = ws.cell(row=start_row, column=1, value="I/O Type")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        cell = ws.cell(row=start_row, column=2, value="IN")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        cell = ws.cell(row=start_row, column=3, value="OUT")
+        cell.border = border
+        cell.font = Font(name=self.DEFAULT_FONT_NAME)
+        
+        # OUTを最後まで結合（動的に計算）
+        end_col = get_column_letter(self.system_desc_total_cols)
         ws.merge_cells(f"C{start_row}:{end_col}{start_row}")
         
         # 2行目: 項目名
@@ -571,7 +822,7 @@ class ExcelHandler:
             cell.font = Font(name=self.DEFAULT_FONT_NAME)
             
             # 入力セルを配置（動的に範囲を計算）
-            for col in range(2, self.desc_total_cols + 1):
+            for col in range(2, self.system_desc_total_cols + 1):
                 cell = ws.cell(row=start_row + i, column=col)
                 
                 # 既存データがある場合は値を設定
@@ -722,6 +973,68 @@ class ExcelHandler:
             
         # 構造が正しいことを確認したら、値を返す
         return table
+        
+    def _parse_existing_user_description_table(self, html_description: str) -> Optional[List[List[str]]]:
+        """
+        既存のHTML User Descriptionテーブルをパースして値を取得
+        
+        Args:
+            html_description: HTML形式のDescription
+            
+        Returns:
+            3行×N列のテーブルデータ、または None（形式が異なる場合）
+        """
+        if not html_description or '<table' not in html_description:
+            return None
+            
+        # HTMLパーサーでテーブルを抽出
+        parser = HTMLTableParser()
+        parser.feed(html_description)
+        
+        if not parser.tables:
+            return None
+            
+        table = parser.tables[0]
+        
+        # User Description用の3行フォーマットを試みる
+        # まず5行フォーマットかチェック
+        if len(table) == 5:
+            # 5行フォーマットの場合、3行フォーマットに変換を試みる
+            # 3-5行目のデータを統合
+            converted_data = []
+            converted_data.append(table[0])  # I/O Type行
+            converted_data.append(table[1])  # 項目名行
+            
+            # データ行を統合（Data Name, Data Label, Dataを結合）
+            data_row = ["要件"]
+            # 各列のデータを結合
+            for col_idx in range(1, len(table[2])):
+                combined = []
+                if col_idx < len(table[2]) and table[2][col_idx]:
+                    combined.append(table[2][col_idx])
+                if col_idx < len(table[3]) and table[3][col_idx]:
+                    combined.append(table[3][col_idx])
+                if col_idx < len(table[4]) and table[4][col_idx]:
+                    combined.append(table[4][col_idx])
+                data_row.append(" / ".join(combined))
+            
+            converted_data.append(data_row)
+            return converted_data
+            
+        # 3行フォーマットの場合
+        if len(table) == 3:
+            # 固定ヘッダーの検証
+            # 1行目
+            if len(table[0]) < 3:
+                return None
+            if table[0][0] != "I/O Type" or table[0][1] != "IN" or table[0][2] != "OUT":
+                return None
+                
+            # 構造が正しいことを確認したら、値を返す
+            return table
+            
+        # その他のフォーマットは対応しない
+        return None
     
     def _adjust_column_widths(self, ws, max_columns: Optional[int] = None) -> None:
         """
@@ -761,6 +1074,22 @@ class ExcelHandler:
             adjusted_width = min(max_length + 2, 50)  # 最大幅を50に制限
             ws.column_dimensions[column_letter].width = adjusted_width
             
+    def _set_fixed_column_widths(self, ws, total_columns: int) -> None:
+        """
+        固定列幅を設定
+        
+        Args:
+            ws: ワークシート
+            total_columns: 設定する列数
+        """
+        # A列
+        ws.column_dimensions['A'].width = self.FIXED_COLUMN_WIDTH_A
+        
+        # B列以降
+        for col_idx in range(2, total_columns + 1):
+            column_letter = get_column_letter(col_idx)
+            ws.column_dimensions[column_letter].width = self.FIXED_COLUMN_WIDTH_OTHER
+            
     def read_requirement_excel(self, input_file: str) -> List[Dict]:
         """
         Excelファイルから要件データを読み込み（改良版）
@@ -787,7 +1116,10 @@ class ExcelHandler:
             print("Excelファイルを開きました。データを処理しています...")
         
             requirement_sheet = wb["Requirement_of_Driver"]
+            
+            # Description編集シートの存在確認
             system_description_sheet = wb["System_Description_edit"] if "System_Description_edit" in wb.sheetnames else None
+            user_description_sheet = wb["User_Description_edit"] if "User_Description_edit" in wb.sheetnames else None
         
             requirements = []
             total_rows = requirement_sheet.max_row - 1  # ヘッダー行を除く
@@ -907,26 +1239,59 @@ class ExcelHandler:
                         item[field_name] = value
             
                 # Description更新チェック
-                if (update_flag == "する" or operation == "新規") and system_description_sheet:
-                    # 新規System Requirementの場合、X列をチェック
+                if (update_flag == "する" or operation == "新規"):
+                    # X列のDescription参照を確認
                     desc_ref = requirement_sheet[f"X{row_num}"].value
+                    
                     if desc_ref:
-                        # 新規の仮リンク（#1など）か通常のリンクかを判定
-                        if str(desc_ref).startswith("#"):
-                            # 新規System Requirement用テンプレートから読み込み
-                            new_description = self._read_new_system_requirement_description(
-                                system_description_sheet, 
-                                desc_ref
-                            )
-                        else:
-                            # 通常のDescription読み込み
-                            new_description = self._read_description_from_sheet(
-                                system_description_sheet, 
-                                item.get("jama_id", "新規")
-                            )
+                        # プレフィックスで判定
+                        desc_ref_str = str(desc_ref)
                         
-                        if new_description:
-                            item["description"] = new_description
+                        if desc_ref_str.startswith("#S"):
+                            # System Requirement用テンプレートから読み込み
+                            if system_description_sheet:
+                                new_description = self._read_new_requirement_description(
+                                    system_description_sheet,
+                                    desc_ref_str,
+                                    "System"
+                                )
+                                if new_description:
+                                    item["description"] = new_description
+                                    
+                        elif desc_ref_str.startswith("#U"):
+                            # User Requirement用テンプレートから読み込み
+                            if user_description_sheet:
+                                new_description = self._read_new_requirement_description(
+                                    user_description_sheet,
+                                    desc_ref_str,
+                                    "User"
+                                )
+                                if new_description:
+                                    item["description"] = new_description
+                                    
+                        else:
+                            # プレフィックスがない場合（既存要件の編集）
+                            # JAMA IDからアイテムタイプを判定して適切なシートを選択
+                            if jama_id and operation == "更新":
+                                # ここでアイテムタイプを判定する方法が必要
+                                # 仮実装：「編集画面へ」リンクのターゲットシートで判定
+                                if system_description_sheet:
+                                    new_description = self._read_description_from_sheet(
+                                        system_description_sheet,
+                                        jama_id,
+                                        "System"
+                                    )
+                                    if new_description:
+                                        item["description"] = new_description
+                                    elif user_description_sheet:
+                                        # System Descriptionに見つからない場合はUser Descriptionを確認
+                                        new_description = self._read_description_from_sheet(
+                                            user_description_sheet,
+                                            jama_id,
+                                            "User"
+                                        )
+                                        if new_description:
+                                            item["description"] = new_description
                         
                 requirements.append(item)
             
@@ -1164,20 +1529,25 @@ class ExcelHandler:
             
         return f"{prefix}{next_num}" if prefix else str(next_num)
             
-    def _read_new_system_requirement_description(self, ws, template_ref: str) -> Optional[str]:
+    def _read_new_requirement_description(self, ws, template_ref: str, req_type: str) -> Optional[str]:
         """
-        新規System Requirement用テンプレートからDescriptionを読み込み
+        新規要件用テンプレートからDescriptionを読み込み
         
         Args:
-            ws: System_Description_editワークシート
-            template_ref: テンプレート参照（例: "#1"）
+            ws: Description編集ワークシート
+            template_ref: テンプレート参照（例: "#S1", "#U1"）
+            req_type: "System" または "User"
             
         Returns:
             HTML形式のDescription
         """
-        # #を除いた番号を取得
-        template_num = template_ref.strip("#")
-        search_pattern = f"【新規System Requirement #{template_num}】"
+        # プレフィックスとテンプレート番号を分離
+        if req_type == "System":
+            template_num = template_ref.strip("#S")
+            search_pattern = f"【新規System Requirement #S{template_num}】"
+        else:
+            template_num = template_ref.strip("#U")
+            search_pattern = f"【新規User Requirement #U{template_num}】"
         
         for row in range(1, ws.max_row + 1):
             cell_value = ws[f"A{row}"].value
@@ -1185,30 +1555,44 @@ class ExcelHandler:
                 # テーブル開始行を特定（ヘッダーの3行下）
                 table_start = row + 3
                 
-                # 5行分のデータを読み込み
-                table_data = []
-                for i in range(5):
-                    row_data = []
-                    # 総列数まで読み込み
-                    for col in range(1, self.desc_total_cols + 1):
-                        value = ws.cell(row=table_start + i, column=col).value
-                        # 0も正しく表示されるように修正
-                        row_data.append(str(value) if value is not None else "")
-                    table_data.append(row_data)
-                    
-                # HTMLテーブルに変換
-                return self._convert_to_html_table(table_data)
+                if req_type == "System":
+                    # 5行分のデータを読み込み
+                    table_data = []
+                    for i in range(5):
+                        row_data = []
+                        # 総列数まで読み込み
+                        for col in range(1, self.system_desc_total_cols + 1):
+                            value = ws.cell(row=table_start + i, column=col).value
+                            row_data.append(str(value) if value is not None else "")
+                        table_data.append(row_data)
+                        
+                    # HTMLテーブルに変換
+                    return self._convert_to_html_table_system(table_data)
+                else:
+                    # 3行分のデータを読み込み
+                    table_data = []
+                    for i in range(3):
+                        row_data = []
+                        # 総列数まで読み込み
+                        for col in range(1, self.user_desc_total_cols + 1):
+                            value = ws.cell(row=table_start + i, column=col).value
+                            row_data.append(str(value) if value is not None else "")
+                        table_data.append(row_data)
+                        
+                    # HTMLテーブルに変換
+                    return self._convert_to_html_table_user(table_data)
                 
         logger.warning(f"テンプレート {template_ref} が見つかりません")
         return None
             
-    def _read_description_from_sheet(self, ws, jama_id: str) -> Optional[str]:
+    def _read_description_from_sheet(self, ws, jama_id: str, req_type: str) -> Optional[str]:
         """
-        System Description編集シートから新しいDescriptionを読み込み（拡張性対応版）
+        Description編集シートから新しいDescriptionを読み込み（拡張性対応版）
         
         Args:
-            ws: System_Description_editワークシート
+            ws: Description編集ワークシート
             jama_id: JAMA ID
+            req_type: "System" または "User"
             
         Returns:
             HTML形式のDescription
@@ -1222,25 +1606,38 @@ class ExcelHandler:
                 # テーブル開始行を特定（【JAMA_ID】要件名の2行下）
                 table_start = row + 2
                 
-                # 5行分のデータを読み込み（列数は動的に計算）
-                table_data = []
-                for i in range(5):
-                    row_data = []
-                    # 総列数まで読み込み
-                    for col in range(1, self.desc_total_cols + 1):
-                        value = ws.cell(row=table_start + i, column=col).value
-                        # 0も正しく表示されるように修正
-                        row_data.append(str(value) if value is not None else "")
-                    table_data.append(row_data)
-                    
-                # HTMLテーブルに変換
-                return self._convert_to_html_table(table_data)
+                if req_type == "System":
+                    # 5行分のデータを読み込み
+                    table_data = []
+                    for i in range(5):
+                        row_data = []
+                        # 総列数まで読み込み
+                        for col in range(1, self.system_desc_total_cols + 1):
+                            value = ws.cell(row=table_start + i, column=col).value
+                            row_data.append(str(value) if value is not None else "")
+                        table_data.append(row_data)
+                        
+                    # HTMLテーブルに変換
+                    return self._convert_to_html_table_system(table_data)
+                else:
+                    # 3行分のデータを読み込み
+                    table_data = []
+                    for i in range(3):
+                        row_data = []
+                        # 総列数まで読み込み
+                        for col in range(1, self.user_desc_total_cols + 1):
+                            value = ws.cell(row=table_start + i, column=col).value
+                            row_data.append(str(value) if value is not None else "")
+                        table_data.append(row_data)
+                        
+                    # HTMLテーブルに変換
+                    return self._convert_to_html_table_user(table_data)
                 
         return None
         
-    def _convert_to_html_table(self, table_data: List[List[str]]) -> str:
+    def _convert_to_html_table_system(self, table_data: List[List[str]]) -> str:
         """
-        テーブルデータをHTMLに変換（拡張性対応版）
+        System Requirement用のテーブルデータをHTMLに変換（拡張性対応版）
         
         Args:
             table_data: テーブルデータ
@@ -1249,7 +1646,7 @@ class ExcelHandler:
             HTMLテーブル
         """
         # 列の位置を動的に計算
-        pos = self._get_column_positions()
+        pos = self._get_system_column_positions()
         
         html = "<table border='1' cellpadding='5' cellspacing='0'>\n"
         
@@ -1262,29 +1659,97 @@ class ExcelHandler:
                 # IN列に薄い青の背景色
                 html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
                 # OUT列に薄い緑の背景色（動的にcolspan計算）
-                out_colspan = self.desc_total_cols - 2  # 総列数 - 最初の2列
+                out_colspan = self.system_desc_total_cols - 2  # 総列数 - 最初の2列
                 html += f"<td colspan='{out_colspan}' style='background-color: #E8F5E9;'>{row[2]}</td>\n"
             elif row_idx == 1:  # 項目名行
                 html += f"<td>{row[0]}</td>\n"
                 # (a)Trigger actionに薄い青の背景色
                 html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
                 # (b)Behavior of ego-vehicleに薄い緑の背景色（動的にcolspan計算）
-                b_colspan = self.DESC_COLS['b']
+                b_colspan = self.SYSTEM_DESC_COLS['b']
                 html += f"<td colspan='{b_colspan}' style='background-color: #E8F5E9;'>{row[pos['b_start'] - 1]}</td>\n"
                 # (c)HMIに薄い緑の背景色（動的にcolspan計算）
-                c_colspan = self.DESC_COLS['c']
+                c_colspan = self.SYSTEM_DESC_COLS['c']
                 html += f"<td colspan='{c_colspan}' style='background-color: #E8F5E9;'>{row[pos['c_start'] - 1]}</td>\n"
                 # (d)Otherに薄い緑の背景色（動的にcolspan計算）
-                d_colspan = self.DESC_COLS['d']
+                d_colspan = self.SYSTEM_DESC_COLS['d']
                 html += f"<td colspan='{d_colspan}' style='background-color: #E8F5E9;'>{row[pos['d_start'] - 1]}</td>\n"
             else:  # データ行（色なし）
-                for cell in row[:self.desc_total_cols]:  # 必要な列数のみ
+                for cell in row[:self.system_desc_total_cols]:  # 必要な列数のみ
                     html += f"<td>{cell}</td>\n"
                     
             html += "</tr>\n"
             
         html += "</table>"
         return html
+        
+    def _convert_to_html_table_user(self, table_data: List[List[str]]) -> str:
+        """
+        User Requirement用のテーブルデータをHTMLに変換（拡張性対応版）
+        
+        Args:
+            table_data: テーブルデータ
+            
+        Returns:
+            HTMLテーブル
+        """
+        # 列の位置を動的に計算
+        pos = self._get_user_column_positions()
+        
+        html = "<table border='1' cellpadding='5' cellspacing='0'>\n"
+        
+        for row_idx, row in enumerate(table_data):
+            html += "<tr>\n"
+            
+            # 特殊な結合処理
+            if row_idx == 0:  # I/O Type行
+                html += f"<td>{row[0]}</td>\n"
+                # IN列に薄い青の背景色
+                html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
+                # OUT列に薄い緑の背景色（動的にcolspan計算）
+                out_colspan = self.user_desc_total_cols - 2  # 総列数 - 最初の2列
+                html += f"<td colspan='{out_colspan}' style='background-color: #E8F5E9;'>{row[2]}</td>\n"
+            elif row_idx == 1:  # 項目名行
+                html += f"<td>{row[0]}</td>\n"
+                # (a)Trigger actionに薄い青の背景色
+                html += f"<td style='background-color: #E3F2FD;'>{row[1]}</td>\n"
+                # (c)HMIに薄い緑の背景色（動的にcolspan計算）
+                c_colspan = self.USER_DESC_COLS['c']
+                html += f"<td colspan='{c_colspan}' style='background-color: #E8F5E9;'>{row[pos['c_start'] - 1]}</td>\n"
+            else:  # データ行（色なし）
+                for cell in row[:self.user_desc_total_cols]:  # 必要な列数のみ
+                    html += f"<td>{cell}</td>\n"
+                    
+            html += "</tr>\n"
+            
+        html += "</table>"
+        return html
+        
+    def _convert_to_html_table(self, table_data: List[List[str]]) -> str:
+        """
+        テーブルデータをHTMLに変換（互換性のため残す）
+        
+        Args:
+            table_data: テーブルデータ
+            
+        Returns:
+            HTMLテーブル
+        """
+        # 5行の場合はSystem用、3行の場合はUser用として処理
+        if len(table_data) == 5:
+            return self._convert_to_html_table_system(table_data)
+        elif len(table_data) == 3:
+            return self._convert_to_html_table_user(table_data)
+        else:
+            # フォールバック：単純なテーブル変換
+            html = "<table border='1' cellpadding='5' cellspacing='0'>\n"
+            for row in table_data:
+                html += "<tr>\n"
+                for cell in row:
+                    html += f"<td>{cell}</td>\n"
+                html += "</tr>\n"
+            html += "</table>"
+            return html
         
     def validate_new_items(self, new_items: List[Dict]) -> List[str]:
         """
