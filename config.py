@@ -49,10 +49,20 @@ class Config:
             "6": 30,   # Component
             "7": 30,   # Component
             "8": 30,   # Component
-            "9": None,  # Set (未定義)
-            "10": None, # Folder (未定義)
-            "11": 301   # STD Oneteam System Requirement
+            "9": 31    # Set
+            # 10, 11は要件名による動的判定のため除外
         }
+        
+        # アイテムタイプ名マッピング（ID -> 表示名）
+        self.item_type_names = {
+            30: "Component",
+            31: "Set",
+            266: "STD User Requirement",
+            301: "STD Oneteam System Requirement"
+        }
+        
+        # 10-11階層のデフォルトアイテムタイプ（判定できない場合）
+        self.default_item_type_for_10_11 = 301
         
         # 設定ファイルを読み込み
         self._load_config()
@@ -85,6 +95,14 @@ class Config:
                     # 設定ファイルの値で上書き（Noneも含めて）
                     for level, type_id in self.config_data['item_type_mapping'].items():
                         self.item_type_mapping[str(level)] = type_id
+                
+                # アイテムタイプ名マッピング
+                if 'item_type_names' in self.config_data:
+                    for type_id, name in self.config_data['item_type_names'].items():
+                        self.item_type_names[int(type_id)] = name
+                        
+                # 10-11階層のデフォルト
+                self.default_item_type_for_10_11 = self.config_data.get('default_item_type_for_10_11', 301)
                     
                 logger.info(f"設定ファイルを読み込みました: {self.config_file}")
                 
@@ -120,11 +138,16 @@ class Config:
                 "6": 30,
                 "7": 30,
                 "8": 30,
-                "9": None,
-                "10": None,
-                "11": 301,
-                "_comment": "階層レベルごとのアイテムタイプID。9,10階層は未定義"
+                "9": 31,
+                "_comment": "階層レベルごとのアイテムタイプID。10,11は要件名により動的判定"
             },
+            "item_type_names": {
+                "30": "Component",
+                "31": "Set",
+                "266": "STD User Requirement",
+                "301": "STD Oneteam System Requirement"
+            },
+            "default_item_type_for_10_11": 301,
             "debug": False
         }
         
@@ -186,6 +209,18 @@ class Config:
             アイテムタイプID、未定義の場合はNone
         """
         return self.item_type_mapping.get(str(level))
+        
+    def get_item_type_name(self, type_id: int) -> str:
+        """
+        アイテムタイプIDに対応する表示名を取得
+        
+        Args:
+            type_id: アイテムタイプID
+            
+        Returns:
+            表示名、未定義の場合は"Unknown"
+        """
+        return self.item_type_names.get(type_id, "Unknown")
         
     def is_item_type_defined_for_level(self, level: int) -> bool:
         """
