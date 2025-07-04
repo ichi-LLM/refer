@@ -101,7 +101,7 @@ class ExcelHandler:
     # User Description編集シートの列幅（拡張性を持たせる）
     USER_DESC_COLS = {
         'a': 1,      # (a)Trigger action: 1列
-        'c': 4       # (c)HMI: 4列
+        'c': 6       # (c)HMI: 6列
     }
     
     # 固定列幅設定
@@ -467,8 +467,8 @@ class ExcelHandler:
                 cell = ws[f"A{current_row - 2}"]
                 cell.value = f"【{jama_id}】{name}"
                 cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True)
-                # 列の結合を動的に計算
-                merge_end_col = get_column_letter(min(10, self.user_desc_total_cols))
+                # 列の結合を動的に計算（最後の列を残す）
+                merge_end_col = get_column_letter(self.user_desc_total_cols - 1)
                 ws.merge_cells(f"A{current_row - 2}:{merge_end_col}{current_row - 2}")
                 
                 # 要件名を表示（リンク先の1つ上）
@@ -477,8 +477,8 @@ class ExcelHandler:
                 cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, size=12)
                 ws.merge_cells(f"A{current_row - 1}:{merge_end_col}{current_row - 1}")
                 
-                # 一覧に戻るリンク
-                link_col = get_column_letter(min(11, self.user_desc_total_cols))
+                # 一覧に戻るリンク（最後の列）
+                link_col = get_column_letter(self.user_desc_total_cols)
                 cell = ws[f"{link_col}{current_row - 1}"]
                 cell.value = "一覧に戻る"
                 cell.hyperlink = f"#Requirement_of_Driver!A{original_idx + 2}"
@@ -622,7 +622,7 @@ class ExcelHandler:
             cell = ws[f"A{start_row}"]
             cell.value = f"【新規User Requirement #U{i}】ここに要件名を入力"
             cell.font = Font(name=self.DEFAULT_FONT_NAME, bold=True, color="FF0000")
-            merge_end_col = get_column_letter(min(10, self.user_desc_total_cols))
+            merge_end_col = get_column_letter(self.user_desc_total_cols - 1)
             ws.merge_cells(f"A{start_row}:{merge_end_col}{start_row}")
             
             # 使用方法の説明
