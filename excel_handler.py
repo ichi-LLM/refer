@@ -85,7 +85,7 @@ class ExcelHandler:
         'S': 'Reason',
         'T': 'Preconditions',
         'U': 'Target_system',
-        'V': '現在のDescription',
+        'V': 'Description（編集可）',
         'W': '要件更新',
         'X': '新Description参照'
     }
@@ -335,41 +335,58 @@ class ExcelHandler:
             
             # Description関連
             description = item.get("description", "")
-            if description:
-                # HTMLテーブルを簡易表示
-                cell = ws[f"V{row_num}"]
-                cell.value = self._extract_table_preview(description)
-                cell.font = Font(name=self.DEFAULT_FONT_NAME)
-                
-                # System RequirementまたはUser RequirementのDescriptionがある場合は編集リンクを作成
-                item_type_id = item.get("item_type_id")
-                if item_type_id in [301, 266]:
-                    cell = ws[f"W{row_num}"]
-                    cell.value = ""  # デフォルトは空欄（更新しない）
-                    cell.font = Font(name=self.DEFAULT_FONT_NAME)
-                    
-                    # 適切なテンプレートマップから正しいテンプレート位置を取得
-                    if item_type_id == 301 and hasattr(self, 'system_requirement_template_map') and (idx - 1) in self.system_requirement_template_map:
-                        template_row = self.system_requirement_template_map[idx - 1]
-                        cell = ws[f"X{row_num}"]
-                        cell.value = "編集画面へ"
-                        # 要件名が見えるように、1行上にリンク
-                        cell.hyperlink = f"#System_Description_edit!A{template_row - 1}"
-                        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
-                    elif item_type_id == 266 and hasattr(self, 'user_requirement_template_map') and (idx - 1) in self.user_requirement_template_map:
-                        template_row = self.user_requirement_template_map[idx - 1]
-                        cell = ws[f"X{row_num}"]
-                        cell.value = "編集画面へ"
-                        # 要件名が見えるように、1行上にリンク
-                        cell.hyperlink = f"#User_Description_edit!A{template_row - 1}"
-                        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+            item_type_id = item.get("item_type_id")
+            
+            # V列: Descriptionの表示（アイテムタイプで分岐）
+            cell = ws[f"V{row_num}"]
+            if item_type_id in [301, 266]:
+                # System/User Requirement: テーブルプレビュー（読み取り専用）
+                if description:
+                    cell.value = self._extract_table_preview(description)
                 else:
-                    cell = ws[f"W{row_num}"]
-                    cell.value = ""  # 非System/User Requirementも空欄
+                    cell.value = ""
+            else:
+                # その他のアイテムタイプ: 既存Descriptionをそのまま表示（編集可能）
+                if description:
+                    # HTMLタグを除去してプレーンテキストとして表示
+                    text = re.sub('<[^<]+?>', '', description)
+                    cell.value = text
+                else:
+                    cell.value = ""
+            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            
+            # W列: 要件更新フラグ（デフォルトは「しない」）
+            cell = ws[f"W{row_num}"]
+            cell.value = "しない"  # デフォルトは「しない」
+            cell.font = Font(name=self.DEFAULT_FONT_NAME)
+            
+            # X列: Description編集リンク（System/User Requirementのみ）
+            if description and item_type_id in [301, 266]:
+                # System RequirementまたはUser RequirementのDescriptionがある場合は編集リンクを作成
+                # 適切なテンプレートマップから正しいテンプレート位置を取得
+                if item_type_id == 301 and hasattr(self, 'system_requirement_template_map') and (idx - 1) in self.system_requirement_template_map:
+                    template_row = self.system_requirement_template_map[idx - 1]
+                    cell = ws[f"X{row_num}"]
+                    cell.value = "編集画面へ"
+                    # 要件名が見えるように、1行上にリンク
+                    cell.hyperlink = f"#System_Description_edit!A{template_row - 1}"
+                    cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+                elif item_type_id == 266 and hasattr(self, 'user_requirement_template_map') and (idx - 1) in self.user_requirement_template_map:
+                    template_row = self.user_requirement_template_map[idx - 1]
+                    cell = ws[f"X{row_num}"]
+                    cell.value = "編集画面へ"
+                    # 要件名が見えるように、1行上にリンク
+                    cell.hyperlink = f"#User_Description_edit!A{template_row - 1}"
+                    cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", underline="single")
+                else:
+                    # ID=301, 266だが、テンプレートマップにない場合
+                    cell = ws[f"X{row_num}"]
+                    cell.value = ""
                     cell.font = Font(name=self.DEFAULT_FONT_NAME)
             else:
-                cell = ws[f"W{row_num}"]
-                cell.value = ""  # Descriptionがない場合も空欄
+                # Descriptionがない、またはID=301, 266以外の場合
+                cell = ws[f"X{row_num}"]
+                cell.value = ""
                 cell.font = Font(name=self.DEFAULT_FONT_NAME)
                     
             row_num += 1
@@ -397,8 +414,10 @@ class ExcelHandler:
             "3. D～N列（階層1～11）に配置したい階層名を入力",
             "4. 新規System Requirementの場合：N列に要件名を入力し、X列に「#S1」～「#S200」を入力",
             "5. 新規User Requirementの場合：N列に要件名を入力し、X列に「#U1」～「#U200」を入力",
-            "6. その他の必要な情報を入力",
-            "7. updateコマンドを実行"
+            "6. その他のアイテムタイプの場合：V列に直接Descriptionを入力可能",
+            "7. W列を「する」に変更（デフォルトは「しない」）",
+            "8. その他の必要な情報を入力",
+            "9. updateコマンドを実行"
         ]
         
         for i, instruction in enumerate(instructions):
@@ -414,6 +433,10 @@ class ExcelHandler:
         cell = ws[f"X{start_row + 5}"]
         cell.value = "新規User Req: #U1～#U200"
         cell.font = Font(name=self.DEFAULT_FONT_NAME, color="FF0000", italic=True)
+        
+        cell = ws[f"V{start_row + 6}"]
+        cell.value = "Component/Set等: 直接入力可"
+        cell.font = Font(name=self.DEFAULT_FONT_NAME, color="0000FF", italic=True)
         
     def _create_user_description_sheet(self, items: List[Dict]) -> None:
         """User Description編集シートを作成"""
@@ -1148,7 +1171,7 @@ class ExcelHandler:
                             has_data = True
                             has_new_items = True
                             break
-                # 更新判定
+                # 更新判定（W列が「する」の場合のみ）
                 elif update_flag == "する":
                     update_count += 1
                     
@@ -1246,6 +1269,7 @@ class ExcelHandler:
                     operation = "更新"
                 else:
                     # JAMA_IDはあるが更新フラグが「する」でない場合はスキップ
+                    # （「しない」または空欄の場合）
                     continue
                 
                 # 基本情報を読み込み
@@ -1285,10 +1309,36 @@ class ExcelHandler:
             
                 # Description更新チェック
                 if (update_flag == "する" or operation == "新規"):
+                    # まず、V列の値を確認（ID=301, 266以外のアイテムタイプ用）
+                    v_column_value = requirement_sheet[f"V{row_num}"].value
+                    
                     # X列のDescription参照を確認
                     desc_ref = requirement_sheet[f"X{row_num}"].value
                     
-                    if desc_ref:
+                    # アイテムタイプの判定（既存要件の場合）
+                    item_type_id = None
+                    if jama_id and operation == "更新":
+                        # O列（アイテムタイプ）から判定
+                        item_type_name = requirement_sheet[f"O{row_num}"].value
+                        if item_type_name == "STD Oneteam System Requirement":
+                            item_type_id = 301
+                        elif item_type_name == "STD User Requirement":
+                            item_type_id = 266
+                    
+                    # 新規要件の場合、要件名から推定
+                    if operation == "新規":
+                        name = item.get("name", "")
+                        name_upper = name.upper() if name else ""
+                        if name_upper.startswith(("SYFR", "SYSP")):
+                            item_type_id = 301
+                        elif name_upper.startswith(("FR", "SP")):
+                            item_type_id = 266
+                    
+                    # Description設定の優先順位
+                    description_set = False
+                    
+                    # 1. ID=301, 266の場合、Description編集シートを優先
+                    if item_type_id in [301, 266] and desc_ref:
                         # プレフィックスで判定
                         desc_ref_str = str(desc_ref)
                         
@@ -1302,6 +1352,7 @@ class ExcelHandler:
                                 )
                                 if new_description:
                                     item["description"] = new_description
+                                    description_set = True
                                     
                         elif desc_ref_str.startswith("#U"):
                             # User Requirement用テンプレートから読み込み
@@ -1313,13 +1364,11 @@ class ExcelHandler:
                                 )
                                 if new_description:
                                     item["description"] = new_description
+                                    description_set = True
                                     
                         else:
                             # プレフィックスがない場合（既存要件の編集）
-                            # JAMA IDからアイテムタイプを判定して適切なシートを選択
                             if jama_id and operation == "更新":
-                                # ここでアイテムタイプを判定する方法が必要
-                                # 仮実装：「編集画面へ」リンクのターゲットシートで判定
                                 if system_description_sheet:
                                     new_description = self._read_description_from_sheet(
                                         system_description_sheet,
@@ -1328,6 +1377,7 @@ class ExcelHandler:
                                     )
                                     if new_description:
                                         item["description"] = new_description
+                                        description_set = True
                                     elif user_description_sheet:
                                         # System Descriptionに見つからない場合はUser Descriptionを確認
                                         new_description = self._read_description_from_sheet(
@@ -1337,6 +1387,13 @@ class ExcelHandler:
                                         )
                                         if new_description:
                                             item["description"] = new_description
+                                            description_set = True
+                    
+                    # 2. ID=301, 266以外の場合、V列の値を使用
+                    if not description_set and item_type_id not in [301, 266] and v_column_value:
+                        # V列の値をそのままDescriptionとして設定（プレーンテキスト）
+                        item["description"] = str(v_column_value)
+                        logger.info(f"V列からDescriptionを設定: 行{row_num}, 長さ={len(str(v_column_value))}文字")
                         
                 requirements.append(item)
             
