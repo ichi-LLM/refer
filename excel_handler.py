@@ -1092,7 +1092,7 @@ class ExcelHandler:
             
     def read_requirement_excel(self, input_file: str) -> List[Dict]:
         """
-        Excelファイルから要件データを読み込み（改良版）
+        Excelファイルから要件データを読み込み（高速化版）
 
         Args:
             input_file: 入力ファイル名
@@ -1109,7 +1109,6 @@ class ExcelHandler:
         
             # 読み込み開始メッセージ
             print(f"\nExcelファイルを開いています... (ファイルサイズ: {file_size:.1f}KB)")
-            print("5MB程度のファイルで約2分かかる場合があります。しばらくお待ちください...")
         
             # ファイルを読み込み
             wb = openpyxl.load_workbook(input_file)
@@ -1126,42 +1125,88 @@ class ExcelHandler:
         
             logger.info(f"総行数: {total_rows}")
             
-            # ステップ1: すべての既存要件を読み込み（バリデーション用）
-            logger.info("既存要件の読み込み開始...")
-            self.all_existing_items = []  # インスタンス変数として保持
+            # 高速化: 軽量スキャンで新規要件の有無をチェック
+            logger.info("処理内容の事前スキャン中...")
+            has_new_items = False
+            update_count = 0
+            delete_count = 0
             
             for row_num in range(2, requirement_sheet.max_row + 1):
                 jama_id = requirement_sheet[f"A{row_num}"].value
-                if jama_id:  # 既存要件（JAMA_IDがある）
-                    # すべての情報を読み込み
-                    item = {
-                        "jama_id": jama_id,
-                        "sequence": requirement_sheet[f"C{row_num}"].value or "",  # Noneを空文字列に変換
-                        "row_num": row_num,
-                        "name": requirement_sheet[f"N{row_num}"].value or requirement_sheet[f"M{row_num}"].value
-                    }
-                    
-                    # 階層情報も保持
-                    hierarchy = []
+                update_flag = requirement_sheet[f"W{row_num}"].value
+                memo_comment = requirement_sheet[f"B{row_num}"].value
+                
+                # 削除判定
+                if str(memo_comment).strip() == "削除" and jama_id:
+                    delete_count += 1
+                # 新規判定
+                elif not jama_id:
+                    # 主要なデータ列をチェック
+                    has_data = False
                     for col in range(4, 15):  # D～N列
-                        value = requirement_sheet.cell(row=row_num, column=col).value
-                        if value:
-                            hierarchy.append(str(value).strip())
-                        else:
+                        if requirement_sheet.cell(row=row_num, column=col).value:
+                            has_data = True
+                            has_new_items = True
                             break
-                    item["hierarchy"] = hierarchy
+                # 更新判定
+                elif update_flag == "する":
+                    update_count += 1
                     
-                    self.all_existing_items.append(item)
-                    
-            logger.info(f"既存要件読み込み完了: {len(self.all_existing_items)}件")
+            logger.info(f"事前スキャン完了: 新規={has_new_items}, 更新={update_count}件, 削除={delete_count}件")
+            
+            # 新規要件がある場合のみ全体読み込み
+            if has_new_items:
+                print("新規要件が検出されました。親要件の検索のため全データを読み込みます...")
+                print("5MB程度のファイルで約2分かかる場合があります。しばらくお待ちください...")
+                
+                # ステップ1: すべての既存要件を読み込み（バリデーション用）
+                logger.info("既存要件の読み込み開始...")
+                self.all_existing_items = []  # インスタンス変数として保持
+            else:
+                print(f"更新・削除のみ検出（更新:{update_count}件, 削除:{delete_count}件）。高速処理モードで実行します...")
+                logger.info("新規要件なし。既存要件の読み込みをスキップします。")
+                self.all_existing_items = []
+            
+            # 新規要件がある場合のみ既存要件を読み込み
+            if has_new_items:
+                for row_num in range(2, requirement_sheet.max_row + 1):
+                    jama_id = requirement_sheet[f"A{row_num}"].value
+                    if jama_id:  # 既存要件（JAMA_IDがある）
+                        # すべての情報を読み込み
+                        item = {
+                            "jama_id": jama_id,
+                            "sequence": requirement_sheet[f"C{row_num}"].value or "",  # Noneを空文字列に変換
+                            "row_num": row_num,
+                            "name": requirement_sheet[f"N{row_num}"].value or requirement_sheet[f"M{row_num}"].value
+                        }
+                        
+                        # 階層情報も保持
+                        hierarchy = []
+                        for col in range(4, 15):  # D～N列
+                            value = requirement_sheet.cell(row=row_num, column=col).value
+                            if value:
+                                hierarchy.append(str(value).strip())
+                            else:
+                                break
+                        item["hierarchy"] = hierarchy
+                        
+                        self.all_existing_items.append(item)
+                        
+                logger.info(f"既存要件読み込み完了: {len(self.all_existing_items)}件")
         
             # ステップ2: 処理対象の要件を読み込み
             logger.info("処理対象要件の読み込み開始...")
             
+            # 進捗表示の頻度を調整（新規要件なしの場合は高頻度）
+            progress_interval = 100 if has_new_items else 500
+            
             for row_idx, row_num in enumerate(range(2, requirement_sheet.max_row + 1), 1):
-                # 進捗表示（100行ごと、最初と最後）
-                if row_idx == 1 or row_idx % 100 == 0 or row_idx == total_rows:
-                    logger.info(f"処理対象要件読み込み進捗: {row_idx}/{total_rows} ({row_idx/total_rows*100:.1f}%)")
+                # 進捗表示（新規要件なしの場合は頻度を下げる）
+                if row_idx == 1 or row_idx % progress_interval == 0 or row_idx == total_rows:
+                    if has_new_items:
+                        logger.info(f"処理対象要件読み込み進捗: {row_idx}/{total_rows} ({row_idx/total_rows*100:.1f}%)")
+                    else:
+                        logger.info(f"高速処理進捗: {row_idx}/{total_rows} ({row_idx/total_rows*100:.1f}%)")
             
                 # 基本情報を取得
                 jama_id = requirement_sheet[f"A{row_num}"].value
@@ -1299,6 +1344,10 @@ class ExcelHandler:
             logger.info(f"  新規作成: {len([r for r in requirements if r['operation'] == '新規'])}件")
             logger.info(f"  更新: {len([r for r in requirements if r['operation'] == '更新'])}件")
             logger.info(f"  削除: {len([r for r in requirements if r['operation'] == '削除'])}件")
+            
+            if not has_new_items and (update_count > 0 or delete_count > 0):
+                logger.info("高速処理モードで実行しました（既存要件の読み込みをスキップ）")
+                print("\n✅ 高速処理モードで読み込みが完了しました！")
         
             return requirements
         
