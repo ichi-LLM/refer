@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>状態遷移図</title>
+    <!-- SheetJS ライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Mermaid ライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fafafa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            color: #333;
+            margin: 10px 20px 5px 20px;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .controls {
+            background: white;
+            padding: 10px 15px;
+            margin: 0 20px 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            padding: 6px 16px;
+            background-color: #f5f5f5;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        
+        .tab:hover {
+            background-color: #e8f5e9;
+        }
+        
+        .tab.active {
+            background-color: #66bb6a;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .filter-container {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .filter-container strong {
+            white-space: nowrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            white-space: nowrap;
+        }
+        
+        .state-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        
+        button {
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            background-color: #66bb6a;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background-color: #4caf50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        button.secondary {
+            background-color: #42a5f5;
+        }
+        
+        button.secondary:hover {
+            background-color: #2196f3;
+        }
+        
+        /* 描画範囲を最大化 */
+        .diagram-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 0 20px 20px 20px;
+            padding: 20px;
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            overflow: auto;
+        }
+        
+        #mermaidDiagram {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+            min-height: 600px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        /* Mermaidのスタイル調整 */
+        .mermaid {
+            max-width: none !important;
+            height: auto;
+            width: auto !important;
+        }
+        
+        /* ツールチップスタイル */
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'BIZ UDPゴシック', 'BIZ UDGothic', Arial, sans-serif;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            line-height: 1.4;
+        }
+        
+        /* エッジのホバー効果 */
+        path[marker-end]:hover {
+            stroke-width: 3px !important;
+            stroke: #2196f3 !important;
+            cursor: pointer;
+        }
+        
+        g.node {
+            cursor: pointer;
+        }
+        
+        /* デモ表示用 */
+        .demo-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            color: rgba(0, 0, 0, 0.05);
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 0;
+            display: none;
+        }
+        
+        /* チェックボックスのスタイル調整 */
+        input[type="checkbox"] {
+            width: 12px;
+            height: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>状態遷移図</h1>
+    
+    <div class="controls">
+        <div class="button-row">
+            <button onclick="document.getElementById('fileInput').click()">XLSXアップロード</button>
+            <button onclick="generateCheckSheet()">チェックシート生成</button>
+            <button onclick="fitToScreen()" class="secondary">全体表示</button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="uploadXLSX(event)">
+        </div>
+        
+        <div class="tab-container">
+            <button class="tab active" onclick="switchView('全体')">全体図</button>
+            <button class="tab" onclick="switchView('AP')">AP</button>
+            <button class="tab" onclick="switchView('HZ')">HZ</button>
+            <button class="tab" onclick="switchView('RCP')">RCP</button>
+            <button class="tab" onclick="switchView('RA')">RA</button>
+            <button class="tab" onclick="switchView('前後移動')">前後移動</button>
+        </div>
+        
+        <div class="filter-container">
+            <strong>状態フィルター:</strong>
+            <div class="filter-group">
+                <label>
+                    <input type="checkbox" class="state-filter" value="開始不可" checked>
+                    <span class="state-color" style="background-color: #ffcdd2;"></span>
+                    開始不可
+                </label>
+                <label>
+                    <input type="checkbox" class="state-filter" value="開始待機" checked>
+                    <span class="state-color" style="background-color: #c5e1a5;"></span>
+                    開始待機
+                </label>
+                <label>
+                    <input type="checkbox" class="state-filter" value="開始確認" checked>
+                    <span class="state-color" style="background-color: #bbdefb;"></span>
+                    開始確認
+                </label>
+                <label>
+                    <input type="checkbox" class="state-filter" value="開始前中止" checked>
+                    <span class="state-color" style="background-color: #ffe0b2;"></span>
+                    開始前中止
+                </label>
+                <label>
+                    <input type="checkbox" class="state-filter" value="AP外" checked>
+                    <span class="state-color" style="background-color: #e1bee7;"></span>
+                    AP外
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="diagram-container">
+        <div class="demo-watermark">DEMO</div>
+        <div id="mermaidDiagram"></div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // グローバル変数
+        let currentData = [];
+        let headers = [];
+        let transitionIds = {}; // 遷移ID管理（キー: "from→to", 値: "001"などの連番）
+        let currentView = '全体';
+        let currentScale = 1.0;
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        let currentNodeSpacing = 60;
+        let currentRankSpacing = 80;
+
+        // 初期データ（デモ用 - 簡略版）
+        const demoData = [
+            ['From_To', 'デモ_AP(駐車)_開始不可', 'デモ_AP(出庫)_開始不可', 'デモ_HZ(駐車)_開始待機', 'デモ_RCP_開始確認', 'デモ_RA_開始前中止', 'デモ_前後移動_開始待機', 'デモ_AP外'],
+            ['デモ_AP(駐車)_開始不可', 'NG', 'NG', 'NG', 'NG', 'NG', 'OK', 'OK'],
+            ['デモ_AP(出庫)_開始不可', 'OK', 'NG', 'NG', 'NG', 'NG', 'NG', 'OK'],
+            ['デモ_HZ(駐車)_開始待機', 'OK', 'NG', 'NG', 'OK', 'NG', 'OK', 'NG'],
+            ['デモ_RCP_開始確認', 'NG', 'OK', 'OK', 'NG', 'NG', 'NG', 'NG'],
+            ['デモ_RA_開始前中止', 'NG', 'NG', 'NG', 'NG', 'NG', 'NG', 'OK'],
+            ['デモ_前後移動_開始待機', 'OK', 'OK', 'OK', 'NG', 'NG', 'NG', 'NG'],
+            ['デモ_AP外', 'OK', 'OK', 'OK', 'OK', 'NG', 'OK', 'NG']
+        ];
+
+        // 初期化
+        function init() {
+            // デモデータで初期化
+            headers = demoData[0];
+            currentData = demoData.slice(1);
+            
+            // イベントリスナー設定
+            setupEventListeners();
+            
+            // 初期表示（IDを再生成）
+            generateAllTransitionIds();
+            renderDiagram();
+        }
+
+        // 全遷移のIDを生成
+        function generateAllTransitionIds() {
+            transitionIds = {}; // リセット
+            let idCounter = 0;
+            
+            // データ全体を走査してOKの遷移に連番を付与
+            currentData.forEach((row) => {
+                const from = row[0];
+                headers.slice(1).forEach((to, j) => {
+                    if (row[j + 1] === 'OK') {
+                        idCounter++;
+                        const key = `${from}→${to}`;
+                        transitionIds[key] = String(idCounter).padStart(3, '0');
+                    }
+                });
+            });
+            
+            console.log(`全遷移ID生成完了: ${idCounter}個`);
+        }
+
+        // 状態の色を取得
+        function getStateColor(stateName) {
+            // デモデータの場合も考慮
+            const cleanName = stateName.replace('デモ_', '');
+            if (cleanName.includes('開始不可')) return '#ffcdd2';
+            if (cleanName.includes('開始待機')) return '#c5e1a5';
+            if (cleanName.includes('開始確認')) return '#bbdefb';
+            if (cleanName.includes('開始前中止')) return '#ffe0b2';
+            if (cleanName === 'AP外' || stateName === 'デモ_AP外') return '#e1bee7';
+            return '#f5f5f5';
+        }
+
+        // ノード名をエスケープ（日本語対応）
+        function escapeNodeName(name) {
+            // Mermaidで使用できない文字をアンダースコアに置換
+            return name.replace(/[()（）\s　]/g, '_');
+        }
+
+        // ノード数に応じてスペーシングを動的に調整
+        function calculateSpacing(nodeCount) {
+            if (nodeCount <= 5) {
+                return { nodeSpacing: 140, rankSpacing: 180 };
+            } else if (nodeCount <= 10) {
+                return { nodeSpacing: 100, rankSpacing: 120 };
+            } else if (nodeCount <= 20) {
+                return { nodeSpacing: 70, rankSpacing: 90 };
+            } else {
+                return { nodeSpacing: 50, rankSpacing: 70 };
+            }
+        }
+
+        // Mermaid図を生成
+        function generateMermaidCode() {
+            const filters = getActiveFilters();
+            let mermaidCode = 'flowchart TB\n';  // Top to Bottom layout
+            
+            // ノード定義
+            const nodes = new Set();
+            const transitions = [];
+            
+            // フィルタリングして表示する遷移を決定
+            currentData.forEach((row, i) => {
+                const from = row[0];
+                if (!shouldShowState(from, filters)) return;
+                
+                nodes.add(from);
+                
+                headers.slice(1).forEach((to, j) => {
+                    if (!shouldShowState(to, filters)) return;
+                    if (row[j + 1] === 'OK') {
+                        nodes.add(to);
+                        const id = transitionIds[`${from}→${to}`];
+                        transitions.push({ from, to, id });
+                    }
+                });
+            });
+            
+            // ノード数に応じてスペーシングを調整
+            const spacing = calculateSpacing(nodes.size);
+            currentNodeSpacing = spacing.nodeSpacing;
+            currentRankSpacing = spacing.rankSpacing;
+            
+            console.log(`ノード数: ${nodes.size}, nodeSpacing: ${currentNodeSpacing}, rankSpacing: ${currentRankSpacing}`);
+            
+            // ノードを定義
+            nodes.forEach(node => {
+                const escaped = escapeNodeName(node);
+                const color = getStateColor(node);
+                // 日本語をそのまま表示
+                mermaidCode += `    ${escaped}["${node}"]\n`;
+                mermaidCode += `    style ${escaped} fill:${color},stroke:#666,stroke-width:2px\n`;
+            });
+            
+            // 遷移を定義
+            transitions.forEach(({ from, to, id }) => {
+                const fromEscaped = escapeNodeName(from);
+                const toEscaped = escapeNodeName(to);
+                mermaidCode += `    ${fromEscaped} --> ${toEscaped}\n`;
+            });
+            
+            return mermaidCode;
+        }
+
+        // フィルター条件を取得
+        function getActiveFilters() {
+            const stateFilters = Array.from(document.querySelectorAll('.state-filter:checked')).map(cb => cb.value);
+            return { stateFilters, functionView: currentView };
+        }
+
+        // 状態を表示するか判定
+        function shouldShowState(stateName, filters) {
+            // デモデータの場合も考慮
+            const cleanName = stateName.replace('デモ_', '');
+            
+            // 状態フィルター
+            let stateMatch = false;
+            filters.stateFilters.forEach(state => {
+                if ((cleanName === 'AP外' || stateName === 'デモ_AP外') && state === 'AP外') {
+                    stateMatch = true;
+                } else if (cleanName.includes(state)) {
+                    stateMatch = true;
+                }
+            });
+            
+            if (!stateMatch) return false;
+            
+            // 機能フィルター
+            if (filters.functionView === '全体') return true;
+            
+            if (cleanName === 'AP外' || stateName === 'デモ_AP外') return true; // AP外は常に表示
+            
+            if (filters.functionView === 'AP') {
+                return cleanName.includes('AP(');
+            } else if (filters.functionView === 'HZ') {
+                return cleanName.includes('HZ(');
+            } else {
+                return cleanName.includes(filters.functionView);
+            }
+        }
+
+        // 図を描画
+        async function renderDiagram() {
+            const container = document.getElementById('mermaidDiagram');
+            const mermaidCode = generateMermaidCode();
+            
+            // デモデータかどうかチェック
+            const isDemo = currentData.length > 0 && currentData[0][0].includes('デモ_');
+            const watermark = document.querySelector('.demo-watermark');
+            if (watermark) {
+                watermark.style.display = isDemo ? 'block' : 'none';
+            }
+            
+            // Mermaidを再初期化（動的なスペーシングを適用）
+            mermaid.initialize({ 
+                startOnLoad: false,
+                theme: 'default',
+                flowchart: {
+                    curve: 'basis',
+                    nodeSpacing: currentNodeSpacing,
+                    rankSpacing: currentRankSpacing,
+                    padding: 30,
+                    htmlLabels: true,
+                    useMaxWidth: false
+                },
+                securityLevel: 'loose'
+            });
+            
+            container.innerHTML = `<pre class="mermaid">${mermaidCode}</pre>`;
+            
+            try {
+                await mermaid.run();
+                // 描画完了後、インタラクション設定
+                setTimeout(() => {
+                    setupDiagramInteraction();
+                }, 100);
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                container.innerHTML = '<p style="color: red;">図の生成に失敗しました。データを確認してください。</p>';
+            }
+        }
+
+        // 図のインタラクション設定
+        function setupDiagramInteraction() {
+            // SVG要素を取得
+            const svg = document.querySelector('#mermaidDiagram svg');
+            if (!svg) return;
+            
+            // 初期設定
+            svg.style.maxWidth = 'none';
+            svg.style.height = 'auto';
+            
+            // 変換を適用
+            const g = svg.querySelector('g');
+            if (g) {
+                g.style.transformOrigin = '0 0';
+                g.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+            }
+            
+            // パン・ズーム機能の実装
+            let isDragging = false;
+            let startX, startY;
+            
+            // ズーム
+            svg.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                currentScale *= delta;
+                currentScale = Math.max(0.3, Math.min(currentScale, 3)); // 最小0.3、最大3
+                updateTransform();
+            });
+            
+            // パン
+            svg.addEventListener('mousedown', (e) => {
+                if (e.target.closest('path[marker-end]') || e.target.closest('g.node')) {
+                    return;
+                }
+                isDragging = true;
+                startX = e.clientX - currentTranslateX;
+                startY = e.clientY - currentTranslateY;
+                svg.style.cursor = 'grabbing';
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                currentTranslateX = e.clientX - startX;
+                currentTranslateY = e.clientY - startY;
+                updateTransform();
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                const svg = document.querySelector('#mermaidDiagram svg');
+                if (svg) svg.style.cursor = 'grab';
+            });
+            
+            function updateTransform() {
+                const g = svg.querySelector('g');
+                if (g) {
+                    g.style.transformOrigin = '0 0';
+                    g.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+                }
+            }
+            
+            // ツールチップ設定
+            setupTooltips();
+            
+            // 初期設定
+            svg.style.cursor = 'grab';
+        }
+        
+        // 全体表示
+        function fitToScreen() {
+            // リセット
+            currentScale = 1.0;
+            currentTranslateX = 0;
+            currentTranslateY = 0;
+            
+            const svg = document.querySelector('#mermaidDiagram svg');
+            if (!svg) return;
+            
+            const g = svg.querySelector('g');
+            if (g) {
+                g.style.transformOrigin = '0 0';
+                g.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+            }
+        }
+        
+        // ツールチップ設定
+        function setupTooltips() {
+            const tooltip = document.getElementById('tooltip');
+            
+            // デバッグ情報
+            console.log('=== ツールチップ設定開始 ===');
+            
+            // 遷移情報を作成
+            const transitions = [];
+            const filters = getActiveFilters();
+            
+            currentData.forEach((row) => {
+                const from = row[0];
+                if (!shouldShowState(from, filters)) return;
+                
+                headers.slice(1).forEach((to, j) => {
+                    if (!shouldShowState(to, filters)) return;
+                    if (row[j + 1] === 'OK') {
+                        const id = transitionIds[`${from}→${to}`];
+                        transitions.push({ from, to, id });
+                    }
+                });
+            });
+            
+            console.log(`表示される遷移数: ${transitions.length}`);
+            
+            // 500ms後にパス要素を探す（Mermaidの描画完了を待つ）
+            setTimeout(() => {
+                // marker-end属性を持つパス要素を取得（これが矢印の線）
+                const arrowPaths = document.querySelectorAll('#mermaidDiagram path[marker-end]');
+                console.log(`矢印パス数: ${arrowPaths.length}`);
+                
+                // 矢印パスと遷移情報を対応付け
+                if (arrowPaths.length === transitions.length) {
+                    arrowPaths.forEach((path, index) => {
+                        const transition = transitions[index];
+                        
+                        // 元のスタイルを保存
+                        const originalStroke = path.getAttribute('stroke') || '#333333';
+                        const originalStrokeWidth = path.getAttribute('stroke-width') || '1';
+                        
+                        path.addEventListener('mouseenter', () => {
+                            // パスを青く太くする
+                            path.setAttribute('stroke', '#2196f3');
+                            path.setAttribute('stroke-width', '3');
+                            
+                            // ツールチップを表示
+                            tooltip.innerHTML = `ID: ${transition.id}<br>${transition.from} → ${transition.to}`;
+                            tooltip.style.display = 'block';
+                        });
+                        
+                        path.addEventListener('mouseleave', () => {
+                            // 元のスタイルに戻す
+                            path.setAttribute('stroke', originalStroke);
+                            path.setAttribute('stroke-width', originalStrokeWidth);
+                            tooltip.style.display = 'none';
+                        });
+                        
+                        path.addEventListener('mousemove', (e) => {
+                            tooltip.style.left = e.pageX + 10 + 'px';
+                            tooltip.style.top = e.pageY - 30 + 'px';
+                        });
+                    });
+                } else {
+                    console.warn(`矢印パス数(${arrowPaths.length})と遷移数(${transitions.length})が一致しません`);
+                }
+                
+                // ノード（状態）のツールチップも設定
+                const nodes = document.querySelectorAll('g.node.default.flowchart-label');
+                console.log(`ノード数: ${nodes.length}`);
+                
+                nodes.forEach((node) => {
+                    node.addEventListener('mouseenter', (e) => {
+                        // foreignObject内のspan.nodeLabelからテキストを取得
+                        const labelSpan = node.querySelector('span.nodeLabel');
+                        if (labelSpan) {
+                            const stateName = labelSpan.textContent;
+                            
+                            // 遷移数をカウント
+                            let inCount = 0;
+                            let outCount = 0;
+                            transitions.forEach(t => {
+                                if (t.from === stateName) outCount++;
+                                if (t.to === stateName) inCount++;
+                            });
+                            
+                            tooltip.innerHTML = `状態: ${stateName}<br>遷移元: ${inCount}個<br>遷移先: ${outCount}個`;
+                            tooltip.style.display = 'block';
+                        }
+                    });
+                    
+                    node.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+                    
+                    node.addEventListener('mousemove', (e) => {
+                        tooltip.style.left = e.pageX + 10 + 'px';
+                        tooltip.style.top = e.pageY - 30 + 'px';
+                    });
+                });
+                
+                console.log('=== ツールチップ設定完了 ===');
+            }, 500);
+        }
+
+        // ビュー切り替え
+        function switchView(view) {
+            currentView = view;
+            
+            // タブのアクティブ状態を更新
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 図を再描画
+            renderDiagram();
+        }
+
+        // XLSXアップロード
+        function uploadXLSX(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        if (jsonData.length > 0) {
+                            headers = jsonData[0];
+                            currentData = jsonData.slice(1);
+                            // ファイル読み込み時にIDを再生成
+                            generateAllTransitionIds();
+                            renderDiagram();
+                            alert('ファイルを正常に読み込みました。');
+                        }
+                    } catch (error) {
+                        alert('ファイルの読み込みに失敗しました: ' + error.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            document.querySelectorAll('.state-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', renderDiagram);
+            });
+        }
+        
+        // チェックシート生成
+        function generateCheckSheet() {
+            // 現在のフィルター状態を取得
+            const filters = getActiveFilters();
+            const activeStates = filters.stateFilters;
+            const activeFunction = currentView;
+            
+            // フィルター説明文を作成
+            let filterDescription = '';
+            if (activeFunction === '全体') {
+                filterDescription = '全機能';
+            } else {
+                filterDescription = activeFunction + '機能';
+            }
+            
+            if (activeStates.length < 5) {
+                filterDescription += ' / ' + activeStates.join('・') + '状態';
+            } else {
+                filterDescription += ' / 全状態';
+            }
+            
+            // 確認ダイアログ
+            const totalCount = countFilteredTransitions(filters);
+            const message = `【チェックシート生成確認】\n\n` +
+                `対象: ${filterDescription}\n` +
+                `遷移数: ${totalCount}件\n\n` +
+                `このフィルター条件でチェックシートを生成しますか？\n` +
+                `（全遷移パターンを生成する場合は、すべてのフィルターをONにしてください）`;
+            
+            if (!confirm(message)) {
+                return;
+            }
+            
+            // チェックシートデータを作成
+            const checkSheetData = createCheckSheetData(filters);
+            
+            // Excelファイルを生成
+            generateExcelFile(checkSheetData);
+        }
+        
+        // フィルター条件での遷移数をカウント
+        function countFilteredTransitions(filters) {
+            let count = 0;
+            currentData.forEach((row) => {
+                const from = row[0];
+                if (!shouldShowState(from, filters)) return;
+                
+                headers.slice(1).forEach((to, j) => {
+                    if (!shouldShowState(to, filters)) return;
+                    if (row[j + 1] === 'OK') {
+                        count++;
+                    }
+                });
+            });
+            return count;
+        }
+        
+        // チェックシートデータを作成
+        function createCheckSheetData(filters) {
+            const sheetData = [];
+            
+            // 1行目：グループヘッダー
+            const groupHeaderRow = [
+                '評価項目', '', '', '', '', '', '',  // テストID～実施日（7列）
+                '前提', '', '',                      // 走行or停止～登録場所（3列）
+                '結果', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''  // 実施結果～メモ（19列）
+            ];
+            sheetData.push(groupHeaderRow);
+            
+            // 2行目：項目名
+            const headerRow = [
+                'テストID', '遷移元状態', '遷移先状態', '期待結果', 'カテゴリ', '操作', '実施日',
+                '走行or停止', 'シフトポジション', '登録場所',
+                '実施結果', '画面', '文言バー', 'ポップアップ', 'インジケータ',
+                'SWバー1段目', 'SWバー2段目', 'SWバー3段目', 'SWバー4段目', 'SWバー5段目', 'SWバー6段目',
+                'ブザー', '音声', 'MID', 'ウインカー点滅',
+                'PanelLog', 'MM動画log', '実施者', 'メモ'
+            ];
+            sheetData.push(headerRow);
+            
+            // データ行を収集
+            const dataRows = [];
+            
+            currentData.forEach((row) => {
+                const from = row[0];
+                if (!shouldShowState(from, filters)) return;
+                
+                headers.slice(1).forEach((to, j) => {
+                    if (!shouldShowState(to, filters)) return;
+                    if (row[j + 1] === 'OK') {
+                        const id = transitionIds[`${from}→${to}`];
+                        const dataRow = [
+                            id,           // テストID
+                            from,         // 遷移元状態
+                            to,           // 遷移先状態
+                            'OK',         // 期待結果
+                            '',           // カテゴリ
+                            '',           // 操作
+                            '',           // 実施日
+                            '',           // 走行or停止
+                            '',           // シフトポジション
+                            '',           // 登録場所
+                            '',           // 実施結果
+                            '',           // 画面
+                            '',           // 文言バー
+                            '',           // ポップアップ
+                            '',           // インジケータ
+                            '',           // SWバー1段目
+                            '',           // SWバー2段目
+                            '',           // SWバー3段目
+                            '',           // SWバー4段目
+                            '',           // SWバー5段目
+                            '',           // SWバー6段目
+                            '',           // ブザー
+                            '',           // 音声
+                            '',           // MID
+                            '',           // ウインカー点滅
+                            '',           // PanelLog
+                            '',           // MM動画log
+                            '',           // 実施者
+                            ''            // メモ
+                        ];
+                        dataRows.push(dataRow);
+                    }
+                });
+            });
+            
+            // ID順にソート（文字列としての数値ソート）
+            dataRows.sort((a, b) => {
+                const idA = parseInt(a[0]);
+                const idB = parseInt(b[0]);
+                return idA - idB;
+            });
+            
+            // ソートされたデータをシートに追加
+            dataRows.forEach(row => sheetData.push(row));
+            
+            return sheetData;
+        }
+        
+        // Excelファイルを生成
+        function generateExcelFile(sheetData) {
+            // ワークブック作成
+            const wb = XLSX.utils.book_new();
+            
+            // ワークシート作成
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            
+            // セル結合の設定
+            const merges = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },   // 評価項目（A1:G1）
+                { s: { r: 0, c: 7 }, e: { r: 0, c: 9 } },   // 前提（H1:J1）
+                { s: { r: 0, c: 10 }, e: { r: 0, c: 28 } }  // 結果（K1:AC1）
+            ];
+            ws['!merges'] = merges;
+            
+            // 列幅の自動調整
+            const colWidths = [];
+            sheetData[1].forEach((header, i) => {  // 2行目のヘッダーで幅を計算
+                let maxWidth = header.length;
+                // データ行も確認（3行目以降）
+                for (let row = 2; row < sheetData.length; row++) {
+                    if (sheetData[row][i] && sheetData[row][i].toString().length > maxWidth) {
+                        maxWidth = sheetData[row][i].toString().length;
+                    }
+                }
+                colWidths.push({ wch: Math.min(maxWidth + 2, 30) }); // 最大30文字幅
+            });
+            ws['!cols'] = colWidths;
+            
+            // ワークブックにシート追加
+            XLSX.utils.book_append_sheet(wb, ws, "画面遷移チェックシート");
+            
+            // ファイル名を生成（日付付き）
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                ('0' + (today.getMonth() + 1)).slice(-2) + 
+                ('0' + today.getDate()).slice(-2);
+            const fileName = `parking_check_sheet_${dateStr}.xlsx`;
+            
+            // ファイル保存
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // 初期化実行
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
