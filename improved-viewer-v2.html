@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>状態遷移図</title>
+    <title>自動駐車 状態遷移図ビューアー</title>
     <!-- SheetJS ライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Mermaid ライブラリ -->
@@ -76,6 +76,7 @@
             gap: 15px;
             align-items: center;
             font-size: 13px;
+            margin-bottom: 8px;
         }
         
         .filter-container strong {
@@ -103,6 +104,14 @@
             height: 14px;
             border-radius: 3px;
             display: inline-block;
+        }
+        
+        .function-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: inline-block;
+            background-color: #90caf9;
         }
         
         button {
@@ -232,6 +241,7 @@
             <button class="tab" onclick="switchView('RCP')">RCP</button>
             <button class="tab" onclick="switchView('RA')">RA</button>
             <button class="tab" onclick="switchView('前後移動')">前後移動</button>
+            <button class="tab" onclick="switchView('カスタム')" style="display: none;">カスタム</button>
         </div>
         
         <div class="filter-container">
@@ -264,6 +274,37 @@
                 </label>
             </div>
         </div>
+        
+        <div class="filter-container">
+            <strong>機能フィルター:</strong>
+            <div class="filter-group">
+                <label>
+                    <input type="checkbox" class="function-filter" value="AP" checked>
+                    <span class="function-color"></span>
+                    AP
+                </label>
+                <label>
+                    <input type="checkbox" class="function-filter" value="HZ" checked>
+                    <span class="function-color"></span>
+                    HZ
+                </label>
+                <label>
+                    <input type="checkbox" class="function-filter" value="RCP" checked>
+                    <span class="function-color"></span>
+                    RCP
+                </label>
+                <label>
+                    <input type="checkbox" class="function-filter" value="RA" checked>
+                    <span class="function-color"></span>
+                    RA
+                </label>
+                <label>
+                    <input type="checkbox" class="function-filter" value="前後移動" checked>
+                    <span class="function-color"></span>
+                    前後移動
+                </label>
+            </div>
+        </div>
     </div>
     
     <div class="diagram-container">
@@ -284,6 +325,7 @@
         let currentTranslateY = 0;
         let currentNodeSpacing = 60;
         let currentRankSpacing = 80;
+        let isCustomMode = false; // カスタムモードかどうか
 
         // 初期データ（デモ用 - 簡略版）
         const demoData = [
@@ -417,7 +459,8 @@
         // フィルター条件を取得
         function getActiveFilters() {
             const stateFilters = Array.from(document.querySelectorAll('.state-filter:checked')).map(cb => cb.value);
-            return { stateFilters, functionView: currentView };
+            const functionFilters = Array.from(document.querySelectorAll('.function-filter:checked')).map(cb => cb.value);
+            return { stateFilters, functionFilters };
         }
 
         // 状態を表示するか判定
@@ -438,17 +481,26 @@
             if (!stateMatch) return false;
             
             // 機能フィルター
-            if (filters.functionView === '全体') return true;
+            // AP外は特殊扱い（常に表示）
+            if (cleanName === 'AP外' || stateName === 'デモ_AP外') return true;
             
-            if (cleanName === 'AP外' || stateName === 'デモ_AP外') return true; // AP外は常に表示
+            // 機能フィルターのチェック
+            let functionMatch = false;
+            filters.functionFilters.forEach(func => {
+                if (func === 'AP' && cleanName.includes('AP(')) {
+                    functionMatch = true;
+                } else if (func === 'HZ' && cleanName.includes('HZ(')) {
+                    functionMatch = true;
+                } else if (func === 'RCP' && cleanName.includes('RCP')) {
+                    functionMatch = true;
+                } else if (func === 'RA' && cleanName.includes('RA')) {
+                    functionMatch = true;
+                } else if (func === '前後移動' && cleanName.includes('前後移動')) {
+                    functionMatch = true;
+                }
+            });
             
-            if (filters.functionView === 'AP') {
-                return cleanName.includes('AP(');
-            } else if (filters.functionView === 'HZ') {
-                return cleanName.includes('HZ(');
-            } else {
-                return cleanName.includes(filters.functionView);
-            }
+            return functionMatch;
         }
 
         // 図を描画
@@ -683,15 +735,60 @@
             }, 500);
         }
 
-        // ビュー切り替え
+        // ビュー切り替え（タブクリック時）
         function switchView(view) {
             currentView = view;
+            isCustomMode = (view === 'カスタム');
             
             // タブのアクティブ状態を更新
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             event.target.classList.add('active');
+            
+            // カスタムモードでなければ、機能フィルターを更新
+            if (!isCustomMode) {
+                updateFunctionFiltersFromView(view);
+            }
+            
+            // 図を再描画
+            renderDiagram();
+        }
+        
+        // ビューに応じて機能フィルターを更新
+        function updateFunctionFiltersFromView(view) {
+            const functionCheckboxes = document.querySelectorAll('.function-filter');
+            
+            if (view === '全体') {
+                // 全てチェック
+                functionCheckboxes.forEach(cb => cb.checked = true);
+            } else {
+                // 該当する機能のみチェック
+                functionCheckboxes.forEach(cb => {
+                    cb.checked = (cb.value === view);
+                });
+            }
+        }
+        
+        // 機能フィルターの変更を処理
+        function onFunctionFilterChange() {
+            // 現在のチェック状態を確認
+            const checkedFunctions = Array.from(document.querySelectorAll('.function-filter:checked')).map(cb => cb.value);
+            
+            // カスタムモードに切り替え
+            if (!isCustomMode) {
+                isCustomMode = true;
+                currentView = 'カスタム';
+                
+                // カスタムタブを表示してアクティブに
+                const customTab = document.querySelector('.tab[onclick*="カスタム"]');
+                customTab.style.display = 'block';
+                
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                customTab.classList.add('active');
+            }
             
             // 図を再描画
             renderDiagram();
@@ -730,8 +827,14 @@
 
         // イベントリスナー設定
         function setupEventListeners() {
+            // 状態フィルター
             document.querySelectorAll('.state-filter').forEach(checkbox => {
                 checkbox.addEventListener('change', renderDiagram);
+            });
+            
+            // 機能フィルター
+            document.querySelectorAll('.function-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', onFunctionFilterChange);
             });
         }
         
@@ -740,16 +843,21 @@
             // 現在のフィルター状態を取得
             const filters = getActiveFilters();
             const activeStates = filters.stateFilters;
-            const activeFunction = currentView;
+            const activeFunctions = filters.functionFilters;
             
             // フィルター説明文を作成
             let filterDescription = '';
-            if (activeFunction === '全体') {
+            
+            // 機能フィルターの説明
+            if (activeFunctions.length === 5) {
                 filterDescription = '全機能';
+            } else if (activeFunctions.length === 0) {
+                filterDescription = '機能なし';
             } else {
-                filterDescription = activeFunction + '機能';
+                filterDescription = activeFunctions.join('・') + '機能';
             }
             
+            // 状態フィルターの説明
             if (activeStates.length < 5) {
                 filterDescription += ' / ' + activeStates.join('・') + '状態';
             } else {
