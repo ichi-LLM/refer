@@ -1,0 +1,966 @@
+{
+    "factor_model": {
+        "version": "1.110.0-19PFv3",
+        "sha1sum": "abde70b06977046b36357b8e3ca130eb14a8a47d"
+    },
+    "jama_requirement": {
+        "url": "http://stargate.jamacloud.com/perspective.req#/items/111111?projectId=124",
+        "version": "55",
+        "global_id": "GID-115100"
+    },
+    "case_no": "Sample",
+    "case_name": "AP機能評価",
+    "opendrive_path": "./AP_DP1000.xodr",
+    "scenario_summary": "AP機能評価基本シナリオ(出庫)",
+    "variation": "",
+    "support_xils": "HILS",
+    "misc": "",
+    "parameters": [
+        {
+            "name": "HILS.Scenario",
+            "type": "string",
+            "values": [
+                "jqap_MapPerpendicularRS_3Parking_vertical line_without_other_car"
+            ],
+            "default": "jqap_MapPerpendicularRS_3Parking_vertical line_without_other_car"
+        },
+        {
+            "name": "HILS.Road",
+            "type": "string",
+            "values": [
+                "jqap_MapPerpendicularRS_3Parking_vertical line_without_other_car"
+            ],
+            "default": "jqap_MapPerpendicularRS_3Parking_vertical line_without_other_car"
+        },
+        {
+            "name": "EGO_CENTER_X",
+            "type": "double",
+            "values": [
+                -1.56
+            ],
+            "default": -1.56
+        },
+        {
+            "name": "EGO_FRONT_LENGTH",
+            "type": "double",
+            "values": [
+                0.875
+            ],
+            "default": 0.875
+        },
+        {
+            "name": "EGO_REAR_LENGTH",
+            "type": "double",
+            "values": [
+                3.995
+            ],
+            "default": 3.995
+        },
+        {
+            "name": "EGO_LENGTH",
+            "type": "double",
+            "values": [
+                4.87
+            ],
+            "default": 4.87
+        },
+        {
+            "name": "EGO_CENTER_Y",
+            "type": "double",
+            "values": [
+                0
+            ],
+            "default": 0
+        },
+        {
+            "name": "EGO_LEFT_WIDTH",
+            "type": "double",
+            "values": [
+                1.025
+            ],
+            "default": 1.025
+        },
+        {
+            "name": "EGO_RIGHT_WIDTH",
+            "type": "double",
+            "values": [
+                1.025
+            ],
+            "default": 1.025
+        },
+        {
+            "name": "EGO_WIDTH",
+            "type": "double",
+            "values": [
+                2.05
+            ],
+            "default": 2.05
+        }
+    ],
+    "actors": [
+        {
+            "name": "ego",
+            "type": "vehicle",
+            "asset_name": "xxx",
+            "catalog_name": "HILS-vehicle",
+            "asset_specifications": {
+                "level1": "",
+                "level2": "",
+                "level3": "",
+                "description": "xxx",
+                "fbxFileUrl": "hils_mock.fbx",
+                "catalogType": "vehicle",
+                "catalogName": "car",
+                "boundingBoxDimensionsL": "4.87",
+                "boundingBoxDimensionsW": "2.05",
+                "boundingBoxDimensionsH": "1.37",
+                "boundingBoxCenterX": "-1.56",
+                "boundingBoxCenterY": "0",
+                "boundingBoxCenterZ": "0.36",
+                "frontAxlePositionX": "0",
+                "frontAxlePositionZ": "0.363",
+                "rearAxlePositionX": "-2.69",
+                "rearAxlePositionZ": "0.363"
+            }
+        }
+    ],
+    "catalog_locations": [
+        {
+            "category": "VehicleCatalog",
+            "path": "../../../Catalog/Vehicle"
+        }
+    ],
+    "initial":[
+        {
+            "actor_name": "ego",
+            "actions": [
+                {
+                    "type": "lane_position",
+                    "params": [
+                        {
+                            "name": "road_id",
+                            "value": "0",
+                            "unit": ""
+                        },
+                        {
+                            "name": "lane_id",
+                            "value": "2",
+                            "unit": ""
+                        },
+                        {
+                            "name": "s",
+                            "value": 100,
+                            "unit": "m"
+                        },
+                        {
+                            "name": "offset",
+                            "value": 0,
+                            "unit": "m"
+                        },
+                        {
+                            "name": "heading",
+                            "value": 0,
+                            "unit": "deg"
+                        },
+                        {
+                            "name": "speed",
+                            "value": 0,
+                            "unit": "km/h"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "story": [
+        {
+            "actor_name": "ego",
+            "events": [
+                {
+                    "no": 1,
+                    "times": 1,
+                    "action": {
+                        "type": "engine_startup_operation",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "1",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "simulation_time",
+                                        "params": [
+                                            {
+                                                "rule": "greaterOrEqual",
+                                                "name": "value",
+                                                "value": 0,
+                                                "unit": "s"
+                                            }
+                                        ],
+                                        "delay": 0.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 1
+                },
+                {
+                    "no": 2,
+                    "times": 1,
+                    "action": {
+                        "type": "shift",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "1",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 1,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 2.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 2
+                },
+                {
+                    "no": 3,
+                    "times": 1,
+                    "action": {
+                        "type": "appcssw",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "1",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 2,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 3
+                },
+                {
+                    "no": 4,
+                    "times": 1,
+                    "action": {
+                        "type": "appcssw",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "0",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 3,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 4
+                },
+                {
+                    "no": 5,
+                    "times": 1,
+                    "action": {
+                        "type": "MM_display_touched_coord",
+                        "params": [
+                            {
+                                "name": "x_coord",
+                                "value": 916,
+                                "unit": ""
+                            },
+                            {
+                                "name": "y_coord",
+                                "value": 207,
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 4,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        "出庫方向(並列前進・右): 0x394, 0x0CFを10進数で設定"
+                    ],
+                    "test_procedure_order": 5
+                },
+                {
+                    "no": 6,
+                    "times": 1,
+                    "action": {
+                        "type": "MM_display_touched_coord",
+                        "params": [
+                            {
+                                "name": "x_coord",
+                                "value": 649,
+                                "unit": ""
+                            },
+                            {
+                                "name": "y_coord",
+                                "value": 207,
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 5,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        "出庫方向(並列前進・左): 0x289, 0x0CFを10進数で設定"
+                    ],
+                    "test_procedure_order": 6
+                },
+                {
+                    "no": 7,
+                    "times": 1,
+                    "action": {
+                        "type": "sw_turn_signal",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "-2",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 6,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 7
+                },
+                {
+                    "no": 8,
+                    "times": 1,
+                    "action": {
+                        "type": "sw_turn_signal",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "2",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 7,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 8
+                },
+                {
+                    "no": 9,
+                    "times": 1,
+                    "action": {
+                        "type": "MM_display_touched_coord",
+                        "params": [
+                            {
+                                "name": "x_coord",
+                                "value": 806,
+                                "unit": ""
+                            },
+                            {
+                                "name": "y_coord",
+                                "value": 939,
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 8,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.05
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        "開始SW: 0x326, 0x3ABを10進数で設定"
+                    ],
+                    "test_procedure_order": 9
+                },
+                {
+                    "no": 10,
+                    "times": 1,
+                    "action": {
+                        "type": "brake",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": 0,
+                                "unit": "%"
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 9,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 3.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 10
+                },
+                {
+                    "no": 11,
+                    "times": 1,
+                    "action": {
+                        "type": "brake",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": 50,
+                                "unit": "%"
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 10,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 3.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 11
+                },
+                {
+                    "no": 12,
+                    "times": 1,
+                    "action": {
+                        "type": "brake",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": 0,
+                                "unit": "%"
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 11,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 3.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 12
+                },
+                {
+                    "no": 13,
+                    "times": 1,
+                    "action": {
+                        "type": "steering",
+                        "params": [
+                            {
+                                "name": "target_rudder_angle",
+                                "value": 10,
+                                "unit": "deg"
+                            },
+                            {
+                                "name": "steering_time",
+                                "value": 1,
+                                "unit": "s"
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 12,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 3.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "criteria": [
+                        {
+                            "target_name": "-",
+                            "expressions": []
+                        }
+                    ],
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 13
+                }
+            ]
+        }
+    ],
+    "end_story": [
+        {
+            "actor_name": "ego",
+            "events": [
+                {
+                    "no": 1,
+                    "times": 1,
+                    "action": {
+                        "type": "brake",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": 0.1,
+                                "unit": "%"
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "simulation_time",
+                                        "params": [
+                                            {
+                                                "rule": "greaterOrEqual",
+                                                "name": "value",
+                                                "value": 0,
+                                                "unit": "s"
+                                            }
+                                        ],
+                                        "delay": 4.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 1
+                },
+                {
+                    "no": 2,
+                    "times": 1,
+                    "action": {
+                        "type": "engine_startup_operation",
+                        "params": [
+                            {
+                                "name": "value",
+                                "value": "0",
+                                "unit": ""
+                            }
+                        ]
+                    },
+                    "start_trigger": {
+                        "condition_groups": [
+                            {
+                                "conditions": [
+                                    {
+                                        "type": "finalization_event_state",
+                                        "params": [
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "event_no",
+                                                "value": 1,
+                                                "unit": ""
+                                            },
+                                            {
+                                                "rule": "equalTo",
+                                                "name": "state",
+                                                "value": "completeState",
+                                                "unit": ""
+                                            }
+                                        ],
+                                        "delay": 0.0
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "remarks": [
+                        ""
+                    ],
+                    "test_procedure_order": 2
+                }
+            ]
+        }
+    ],
+    "stop_trigger": {
+        "condition_groups": [
+            {
+                "conditions": [
+                    {
+                        "type": "simulation_time",
+                        "params": [
+                            {
+                                "rule": "greaterOrEqual",
+                                "name": "value",
+                                "value": 60,
+                                "unit": "s"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "criteria_titles": [
+        "-",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+    ]
+}

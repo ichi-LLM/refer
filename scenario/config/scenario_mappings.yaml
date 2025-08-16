@@ -1,0 +1,74 @@
+# scenario_mappings.yaml
+# すべてのシナリオ設定を一元管理
+# 新しいシナリオを追加する場合は、scenariosセクションに追記するだけ
+
+# 共通設定
+common_settings:
+  injection_points:
+    開始前:
+      description: "機能開始前のチェック（開始不可パターン）"
+      default_delay: 3.0
+      
+    自動制御中:
+      description: "自動制御実行中の異常（中止パターン）"
+      default_delay: 0.5
+      
+    # 将来の拡張用
+    # 終了後:
+    #   description: "自動制御完了後の確認"
+    #   default_delay: 2.0
+
+# シナリオ定義
+# キー: シナリオ名（base_scenariosディレクトリ内のフォルダ名と一致させる）
+scenarios:
+  AP_出庫:
+    # ベースシナリオファイル名
+    base_file: "AP_basic_sample1.json"
+    
+    # このシナリオの挿入位置定義
+    injection_points:
+      開始前:
+        after_event: 2  # APPCSSWオン（イベント2）の後
+        delay: 3.0      # 個別の遅延時間（省略時はdefault_delayを使用）
+        
+      自動制御中:
+        after_event: 10  # ブレーキ解除（イベント10）の後
+        delay: 3.0
+        
+  # AP_入庫:
+  #   base_file: "AP_basic_sample2.json"
+  #   injection_points:
+  #     開始前:
+  #       after_event: 3
+  #     自動制御中:
+  #       after_event: 12
+        
+  # APA_縦列:
+  #   base_file: "APA_parallel.json"
+  #   injection_points:
+  #     開始前:
+  #       after_event: 2
+  #     自動制御中:
+  #       after_event: 15
+        
+  # APA_垂直:
+  #   base_file: "APA_perpendicular.json"
+  #   injection_points:
+  #     開始前:
+  #       after_event: 2
+  #     自動制御中:
+  #       after_event: 14
+
+# 追加設定（オプション）
+settings:
+  # 出力ファイル名のフォーマット
+  output_filename_format: "{date}_{scenario}_{signal}_{point}.json"
+  
+  # レポート生成
+  generate_report: true
+  
+  # バリデーション
+  validate_generated_scenarios: true
+  
+  # ログレベル
+  log_level: "INFO"
